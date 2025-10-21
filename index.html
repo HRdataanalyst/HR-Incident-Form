@@ -1524,69 +1524,88 @@ document.addEventListener('click', (e)=>{
   }
 });
 
-/** ---------- แนบรูป: พรีวิว + ตรวจสอบไฟล์ ---------- */
+/** ---------- แนบรูป: พรีวิว + ลบไฟล์ที่เลือก ---------- */
 const MAX_FILES = 10;
 const MAX_SIZE  = 5 * 1024 * 1024; // 5MB/ไฟล์
-const MAX_TOTAL_UPLOAD = 20 * 1024 * 1024; // 20MB รวมทุกไฟล์
+const MAX_TOTAL_UPLOAD = 20 * 1024 * 1024; // 20MB รวม
 const ACCEPTED_TYPES = ['image/png','image/jpeg','image/jpg','image/heic','image/heif','image/webp'];
 
-document.addEventListener('change', (e) => {
-  if (e.target && e.target.id === 'incidentPhotos') {
-    const files = Array.from(e.target.files || []);
-    const preview = document.getElementById('photoPreview');
-    preview.innerHTML = '';
+const fileInput = document.getElementById('incidentPhotos');
+const previewEl = document.getElementById('photoPreview');
 
-    // จำนวนไฟล์
-    if (files.length > MAX_FILES) {
-      alert(`อัปโหลดได้สูงสุด ${MAX_FILES} รูป`);
-      e.target.value = '';
-      return;
-    }
+// ตะกร้าไฟล์ที่ผู้ใช้เลือก (แก้ไขได้)
+let uploadDT = new DataTransfer();
 
-    // ขนาดรวม
-    const total = files.reduce((sum, f) => sum + f.size, 0);
-    if (total > MAX_TOTAL_UPLOAD) {
-      alert('ขนาดไฟล์รวมเกิน 20MB กรุณาลดจำนวน/ขนาดไฟล์');
-      e.target.value = '';
-      return;
-    }
+fileInput.addEventListener('change', onSelectFiles);
 
-    // พรีวิว + ตรวจขนาด/ชนิดทีละไฟล์
-    files.forEach(f => {
-      // เผื่อบางไฟล์เป็น octet-stream ให้เช็กนามสกุลสำรอง
-      const ext = (f.name.split('.').pop() || '').toLowerCase();
-      const mimeOk = /^image\//i.test(f.type) || ACCEPTED_TYPES.includes(f.type);
-      const extOk  = ['png','jpg','jpeg','heic'].includes(ext);
-      if (!mimeOk && !extOk) {
-        alert(`ไฟล์ "${f.name}" ไม่ใช่รูปภาพที่รองรับ`);
-        return;
-      }
-      if (f.size > MAX_SIZE) {
-        alert(`ไฟล์ "${f.name}" เกิน 5MB`);
-        return;
-      }
+function onSelectFiles(e){
+  const incoming = Array.from(e.target.files || []);
 
-      const url = URL.createObjectURL(f);
-      const fig = document.createElement('div');
-      fig.className = 'aspect-square rounded-lg overflow-hidden border border-gray-200';
-      fig.innerHTML = `<img src="${url}" alt="" class="w-full h-full object-cover" />`;
-      preview.appendChild(fig);
-    });
+  // เติมเข้าตะกร้า (ตรวจทีละไฟล์)
+  for (const f of incoming){
+    if (uploadDT.files.length >= MAX_FILES) { alert(`อัปโหลดได้สูงสุด ${MAX_FILES} รูป`); break; }
+
+    const ext = (f.name.split('.').pop()||'').toLowerCase();
+    const mimeOk = /^image\//i.test(f.type) || ACCEPTED_TYPES.includes(f.type);
+    const extOk  = ['png','jpg','jpeg','heic','heif','webp'].includes(ext);
+    if (!mimeOk && !extOk) { alert(`ไฟล์ "${f.name}" ไม่ใช่รูปภาพที่รองรับ`); continue; }
+    if (f.size > MAX_SIZE) { alert(`ไฟล์ "${f.name}" เกิน 5MB`); continue; }
+
+    uploadDT.items.add(f);
   }
-});
 
-function fileToBase64(file){
-  return new Promise((resolve,reject)=>{
-    const reader = new FileReader();
-    reader.onload = () => {
-      const s = String(reader.result || '');
-      const m = s.match(/^data:(.+);base64,(.*)$/);
-      if(!m) return reject(new Error('อ่านไฟล์ไม่สำเร็จ'));
-      resolve({ name:file.name, mimeType:m[1], base64:m[2] });
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+  // ตรวจขนาดรวม
+  const total = Array.from(uploadDT.files).reduce((s,f)=>s+f.size,0);
+  if (total > MAX_TOTAL_UPLOAD){
+    alert('ขนาดไฟล์รวมเกิน 20MB กรุณาลดจำนวน/ขนาดไฟล์');
+    // ตัดลงให้พอ: ไล่ลบตัวสุดท้ายจนกว่าจะไม่เกิน
+    while (Array.from(uploadDT.files).reduce((s,f)=>s+f.size,0) > MAX_TOTAL_UPLOAD){
+      uploadDT.items.remove(uploadDT.files.length - 1);
+    }
+  }
+
+  syncInputAndRender();
+}
+
+function syncInputAndRender(){
+  // ซิงก์กลับไปที่ <input> ให้สะท้อนรายการล่าสุด
+  fileInput.files = uploadDT.files;
+  renderPreviews();
+}
+
+function renderPreviews(){
+  previewEl.innerHTML = '';
+  Array.from(uploadDT.files).forEach((f, idx) => {
+    const url = URL.createObjectURL(f);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200';
+
+    // รูป
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = f.name;
+    img.className = 'w-full h-full object-cover';
+
+    // ปุ่มลบ
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'ลบรูป');
+    btn.className =
+      'absolute top-1 right-1 rounded-md px-2 py-1 text-xs bg-black/60 text-white hover:bg-black/80';
+    btn.textContent = '✕';
+    btn.onclick = () => removeFileAt(idx);
+
+    wrap.appendChild(img);
+    wrap.appendChild(btn);
+    previewEl.appendChild(wrap);
   });
+}
+
+function removeFileAt(index){
+  if (index < 0 || index >= uploadDT.files.length) return;
+  uploadDT.items.remove(index);
+  syncInputAndRender();
 }
 
 async function collectImagesFromInput(){
