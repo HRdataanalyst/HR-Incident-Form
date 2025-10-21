@@ -250,9 +250,8 @@ input[type="time"]{
     <!-- Step 4: Details form -->
     <section id="detailsStep" class="hidden fade-in">
       <div class="max-w-4xl mx-auto bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl p-4 md:p-6 border border-gray-100">
-        <div class="flex items-center mb-4">
-          <div id="priorityIcon" class="w-8 h-8 rounded-xl mr-3 shadow-md"></div>
-          <div>
+        alt="icon" class="w-8 h-8 rounded-xl mr-3 shadow-md object-contain" />
+  <div>
             <h2 id="formTitle" class="text-lg font-bold text-gray-800">รายละเอียดการแจ้ง</h2>
             <p id="formSubtitle" class="text-xs text-gray-600 mt-1">กรุณากรอกข้อมูลให้ครบถ้วน</p>
           </div>
@@ -1150,8 +1149,9 @@ async function verifyEmployee(e){
     default:'bg-gradient-to-br from-blue-400 to-blue-600'
   };
   const iconBox = document.getElementById('priorityIcon');
-  const colorClass = icons[selectedCategory] || icons.default;
-  iconBox.className = `w-12 h-12 rounded-2xl mr-3 shadow-lg ${colorClass}`;
+iconBox.className = 'mr-3'; // ตัวกล่องไม่ต้องมีสี/ขนาดแล้ว
+iconBox.innerHTML =
+  '<img src="./clipboard.png" alt="icon" class="w-12 h-12 rounded-2xl shadow-lg object-contain" />';
 
   // ตั้งหัวเรื่องฟอร์ม
   let title = `รายละเอียด${catLabel}`;
