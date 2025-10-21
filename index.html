@@ -248,15 +248,19 @@ input[type="time"]{
     </section>
 
     <!-- Step 4: Details form -->
-    <section id="detailsStep" class="hidden fade-in">
-      <div class="max-w-4xl mx-auto bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl p-4 md:p-6 border border-gray-100">
-        alt="icon" class="w-8 h-8 rounded-xl mr-3 shadow-md object-contain" />
-  <div>
-            <h2 id="formTitle" class="text-lg font-bold text-gray-800">รายละเอียดการแจ้ง</h2>
-            <p id="formSubtitle" class="text-xs text-gray-600 mt-1">กรุณากรอกข้อมูลให้ครบถ้วน</p>
-          </div>
-        </div>
-        <form onsubmit="submitReport(event)">
+   <section id="detailsStep" class="hidden fade-in">
+  <div class="max-w-4xl mx-auto bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl p-4 md:p-6 border border-gray-100">
+    <div class="flex items-center mb-4">
+      <!-- ✅ มี id="priorityIcon" ให้ JS หาเจอ -->
+      <img id="priorityIcon" src="./clipboard.png"
+           alt="icon"
+           class="w-12 h-12 rounded-2xl mr-3 shadow-lg object-contain" />
+      <div>
+        <h2 id="formTitle" class="text-lg font-bold text-gray-800">รายละเอียดการแจ้ง</h2>
+        <p id="formSubtitle" class="text-xs text-gray-600 mt-1">กรุณากรอกข้อมูลให้ครบถ้วน</p>
+      </div>
+    </div>
+    <form onsubmit="submitReport(event)">
           
     <!-- วันที่และเวลาแจ้ง : พื้นหลังขาว + กรอบฟ้า -->
 <div class="bg-blue-50/40 rounded-lg p-4 mb-4 border border-blue-200 ring-1 ring-blue-200/60">
@@ -1134,37 +1138,27 @@ async function verifyEmployee(e){
 }
 
     // ===== Details step =====
-   function proceedToDetails(){
-  // ชื่อหมวด/ย่อย/รายละเอียดที่ผู้ใช้เลือก
+   function proceedToDetails() {
   const catLabel = selectedCategoryTH || 'หมวดหมู่';
   const subLabel = selectedSubCategoryName || '';
   const detLabel = selectedDetailName || '';
 
-  // ไอคอนสีพื้นตามหมวด (ถ้า slug ไม่ตรง preset → ใช้ default)
-  const icons = {
-    termination:'bg-gradient-to-br from-red-400 to-red-600',
-    accident:'bg-gradient-to-br from-orange-400 to-orange-600',
-    safety:'bg-gradient-to-br from-yellow-400 to-yellow-600',
-    complaint:'bg-gradient-to-br from-purple-400 to-purple-600',
-    default:'bg-gradient-to-br from-blue-400 to-blue-600'
-  };
-  const iconBox = document.getElementById('priorityIcon');
-iconBox.className = 'mr-3'; // ตัวกล่องไม่ต้องมีสี/ขนาดแล้ว
-iconBox.innerHTML =
-  '<img src="./clipboard.png" alt="icon" class="w-12 h-12 rounded-2xl shadow-lg object-contain" />';
+  // ✅ ตั้งรูปไอคอน (ใช้ clipboard.png ตลอด)
+  const iconEl = document.getElementById('priorityIcon');
+  if (iconEl) {
+    iconEl.src = './clipboard.png'; // ชื่อไฟล์ตามที่อัพไว้ (ตัวพิมพ์เล็ก-ใหญ่ต้องตรง)
+    iconEl.className = 'w-12 h-12 rounded-2xl mr-3 shadow-lg object-contain';
+  }
 
-  // ตั้งหัวเรื่องฟอร์ม
+  // ตั้งหัวเรื่อง
   let title = `รายละเอียด${catLabel}`;
   if (subLabel) title += ` - ${subLabel}`;
   if (detLabel) title += ` - ${detLabel}`;
-
   document.getElementById('formTitle').textContent = title;
   document.getElementById('formSubtitle').textContent =
-    detLabel
-      ? `กรุณากรอกข้อมูลเกี่ยวกับ ${detLabel} ให้ครบถ้วน`
-      : (subLabel
-          ? `กรุณากรอกข้อมูลเกี่ยวกับ ${subLabel} ให้ครบถ้วน`
-          : `กรุณากรอกข้อมูลเกี่ยวกับ ${catLabel} ให้ครบถ้วน`);
+    detLabel ? `กรุณากรอกข้อมูลเกี่ยวกับ ${detLabel} ให้ครบถ้วน`
+             : (subLabel ? `กรุณากรอกข้อมูลเกี่ยวกับ ${subLabel} ให้ครบถ้วน`
+                         : `กรุณากรอกข้อมูลเกี่ยวกับ ${catLabel} ให้ครบถ้วน`);
 
   // วันที่เวลาเริ่มต้น
   const now = new Date();
