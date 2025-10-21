@@ -216,10 +216,12 @@ input[type="time"]{
 </p>
 
         <button
+          type="button"
+  onclick="nextStep()"
   class="group relative bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold py-4 px-8 rounded-2xl shadow-xl
          hover:shadow-2xl transition-all duration-300 text-lg transform hover:scale-105 hover:-translate-y-1
          w-full sm:w-auto mt-6 sm:mt-8">
-  🚀 เริ่มต้นแจ้งเหตุการณ์
+  เริ่มต้นแจ้งเหตุการณ์
 </button>
       </div>
     </section>
@@ -1626,6 +1628,20 @@ function toggleMobileMenu(nextState){
   const isHidden = panel.classList.contains('hidden');
   const shouldOpen = (typeof nextState === 'boolean') ? nextState : isHidden;
   panel.classList.toggle('hidden', !shouldOpen);
+}
+
+    function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => {
+      const s = String(reader.result || '');
+      const m = s.match(/^data:(.+);base64,(.*)$/);
+      if(!m) return reject(new Error('อ่านไฟล์ไม่สำเร็จ'));
+      resolve({ name:file.name, mimeType:m[1], base64:m[2] });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
     
   </script>
