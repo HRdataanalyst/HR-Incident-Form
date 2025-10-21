@@ -252,9 +252,10 @@ input[type="time"]{
   <div class="max-w-4xl mx-auto bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl p-4 md:p-6 border border-gray-100">
     <div class="flex items-center mb-4">
       <!-- ✅ มี id="priorityIcon" ให้ JS หาเจอ -->
-      <img id="priorityIcon" src="./clipboard.png"
+      <img id="priorityIcon" 
+        src="./clipboard.png"
            alt="icon"
-           class="w-12 h-12 rounded-2xl mr-3 shadow-lg object-contain" />
+           class="w-12 h-12 mr-3 object-contain" />
       <div>
         <h2 id="formTitle" class="text-lg font-bold text-gray-800">รายละเอียดการแจ้ง</h2>
         <p id="formSubtitle" class="text-xs text-gray-600 mt-1">กรุณากรอกข้อมูลให้ครบถ้วน</p>
@@ -1147,7 +1148,7 @@ async function verifyEmployee(e){
   const iconEl = document.getElementById('priorityIcon');
   if (iconEl) {
     iconEl.src = './clipboard.png'; // ชื่อไฟล์ตามที่อัพไว้ (ตัวพิมพ์เล็ก-ใหญ่ต้องตรง)
-    iconEl.className = 'w-12 h-12 rounded-2xl mr-3 shadow-lg object-contain';
+    iconEl.className = 'w-12 h-12 mr-3 object-contain';
   }
 
   // ตั้งหัวเรื่อง
