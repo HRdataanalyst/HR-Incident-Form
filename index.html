@@ -419,18 +419,27 @@ input[type="time"]{
       placeholder="กรุณาระบุรายละเอียดเหตุการณ์ให้ชัดเจน เช่น สถานที่เกิดเหตุ, ผู้เกี่ยวข้อง, สาเหตุ"></textarea>
   </div>
 
-  <!-- สถานที่เกิดเหตุ: พิมพ์ได้ + มีรายการแนะนำจากชีต -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    <!-- Format + Location -->
+  <!-- Format + Location -->
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
   <!-- Format -->
-  <div>
+  <div class="relative">
     <label class="block text-gray-700 font-semibold mb-1 text-xs">Format</label>
     <input
       type="text"
       id="locationFormat"
       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-      placeholder="เช่น ชั้น/อาคาร/โซนผลิต" />
+      placeholder="เช่น ชั้น/อาคาร/โซนผลิต"
+      autocomplete="off"
+      oninput="typeaheadFormat(this.value)"
+    />
+    <button
+      type="button"
+      class="absolute right-2 top-8 px-2 py-1 text-xs border rounded hover:bg-gray-50"
+      onclick="toggleFormatDropdown(true)"
+      aria-label="แสดงรายการ Format"
+    >▼</button>
+    <div id="formatDropdown"
+         class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
   </div>
 
   <!-- Location -->
@@ -440,10 +449,18 @@ input[type="time"]{
       type="text"
       id="locationInput"
       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-      placeholder="พิมพ์เพื่อค้นหาสถานที่..." autocomplete="off"
-      oninput="typeaheadLocation(this.value)" />
+      placeholder="พิมพ์เพื่อค้นหาสถานที่..."
+      autocomplete="off"
+      oninput="typeaheadLocation(this.value)"
+    />
+    <button
+      type="button"
+      class="absolute right-2 top-8 px-2 py-1 text-xs border rounded hover:bg-gray-50"
+      onclick="toggleLocationDropdown(true)"
+      aria-label="แสดงรายการ Location"
+    >▼</button>
     <div id="locationDropdown"
-      class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
+         class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
   </div>
 </div>
 
@@ -1313,37 +1330,40 @@ function toggleTimeEdit(){
   }
 }   
     
-    async function submitReport(e){
+   async function submitReport(e){
   e.preventDefault();
 
-  // ✅ ตรวจช่องรายละเอียด (จำเป็น)
+  // รายละเอียดจำเป็น
   const detailText = (document.getElementById('incidentDetail').value || '').trim();
   if(!detailText){
     alert('กรุณากรอกรายละเอียดเหตุการณ์');
     return;
   }
 
-  // ✅ ดึงค่าสนามต่างๆ จากหน้า
+  // ✅ ดึงค่า Format + Location
+  const LocationFormat = (document.getElementById('locationFormat').value || '').trim();
+  const LocationOnly   = (document.getElementById('locationInput').value || '').trim();
   const Location = (LocationFormat && LocationOnly)
-  ? `${LocationFormat} - ${LocationOnly}`
-  : (LocationFormat || LocationOnly);
+    ? `${LocationFormat} - ${LocationOnly}`
+    : (LocationFormat || LocationOnly);
+
+  // ข้อมูลผู้แจ้ง
   const EmpName  = (document.getElementById('employeeName').value || '').trim();
   const EmpId    = (document.getElementById('employeeCode').value || '').trim();
   const Dept     = (document.getElementById('employeeDepartment').value || '').trim();
   const Phone    = (document.getElementById('employeePhone').value || '').trim();
 
-  // ✅ ตรวจว่ากรอกรหัสพนักงานครบไหม
   if(!EmpId){
     alert('กรุณายืนยันตัวตนผู้แจ้งก่อน (กรอก “รหัสพนักงาน”)');
     return;
   }
 
-  // ✅ กำหนดตัวแปรจาก Step ที่เลือก
+  // จาก Step ที่เลือก
   const Category    = selectedCategoryTH || '';
   const SubCategory = selectedSubCategoryName || '';
   const Detail      = selectedDetailName ? `${selectedDetailName} — ${detailText}` : detailText;
 
-  // ✅ ตรวจขนาดไฟล์รวมก่อนอัปโหลด
+  // ตรวจขนาดไฟล์รวม
   const total = Array.from(document.getElementById('incidentPhotos').files || [])
     .reduce((s,f)=> s + f.size, 0);
   if (total > MAX_TOTAL_UPLOAD) {
@@ -1353,11 +1373,8 @@ function toggleTimeEdit(){
 
   try{
     showLoading('กำลังอัปโหลดไฟล์และสร้างเคส...');
+    const Images = await collectImagesFromInput();
 
-    // ✅ เก็บไฟล์จาก input แล้วแปลง base64
-    const Images = await collectImagesFromInput(); // [{name,mimeType,base64}, ...]
-
-    // ✅ สร้าง payload ส่งไป Apps Script
     const payload = {
       action: 'create',
       Category, SubCategory, Detail, Location,
@@ -1365,7 +1382,6 @@ function toggleTimeEdit(){
       Images
     };
 
-    // ✅ ส่งข้อมูล
     const rs = await apiPost(payload);
     hideLoading();
 
@@ -1374,13 +1390,9 @@ function toggleTimeEdit(){
       return;
     }
 
-    // ✅ ตั้งเลขอ้างอิงจาก server (Apps Script ควรส่ง caseId กลับมา)
     document.getElementById('referenceNumber').textContent = rs.caseId || '—';
-    
-    // ✅ ทำดวง stepper ให้เป็นสถานะสำเร็จทั้งหมด แล้วไปหน้า success
-markAllStepsCompleted();
-nextStep();   // จาก step 4 → ไป successStep
-
+    markAllStepsCompleted();
+    nextStep();
   }catch(err){
     hideLoading();
     alert('อัปโหลดไม่สำเร็จ\n' + (err.message || err));
@@ -1540,12 +1552,111 @@ async function typeaheadLocation(q){
 
 // ปิด dropdown เมื่อคลิกนอก
 document.addEventListener('click', (e)=>{
-  const dropdown = document.getElementById('locationDropdown');
-  const input = document.getElementById('locationInput');
-  if(dropdown && !dropdown.contains(e.target) && e.target!==input){
-    dropdown.classList.add('hidden');
+  const locDropdown = document.getElementById('locationDropdown');
+  const locInput    = document.getElementById('locationInput');
+  const fmtDropdown = document.getElementById('formatDropdown');
+  const fmtInput    = document.getElementById('locationFormat');
+
+  if (locDropdown && !locDropdown.contains(e.target) && e.target !== locInput){
+    locDropdown.classList.add('hidden');
+  }
+  if (fmtDropdown && !fmtDropdown.contains(e.target) && e.target !== fmtInput){
+    fmtDropdown.classList.add('hidden');
   }
 });
+
+    /** ---------- Format: โหลดจากชีต (หรือ fallback) + แคช --------- */
+let _FORMATS = null; // แคชในหน้านี้
+
+async function ensureFormats(){
+  if (Array.isArray(_FORMATS)) return _FORMATS;
+  try{
+    // ฝั่ง Apps Script ควรทำ action=formats (เช่น อ่านชีต "สถานที่เกิดเหตุ" คอลัมน์ A หรือชีตที่คุณต้องการ)
+    const rs = await apiGet({ action:'formats' });
+    _FORMATS = (rs.ok ? rs.rows : []) || [];
+  }catch{
+    // ถ้าไม่มี endpoint ก็มี fallback พื้นฐาน
+    _FORMATS = ['ชั้น 1','ชั้น 2','อาคาร A','อาคาร B','โซนผลิต A','โซนผลิต B'];
+  }
+  return _FORMATS;
+}
+
+let _fmtDebounce = 0;
+async function typeaheadFormat(q){
+  const dropdown = document.getElementById('formatDropdown');
+  const input    = document.getElementById('locationFormat');
+
+  clearTimeout(_fmtDebounce);
+  _fmtDebounce = setTimeout(async () => {
+    if (!q) { dropdown.classList.add('hidden'); return; }
+
+    const items = await ensureFormats();
+    const list = items
+      .map(v => String(v || ''))
+      .filter(v => v.toLowerCase().includes(q.toLowerCase()))
+      .slice(0, 50);
+
+    if (list.length === 0){ dropdown.classList.add('hidden'); return; }
+
+    dropdown.innerHTML = '';
+    list.forEach(fmt => {
+      const div = document.createElement('div');
+      div.className = 'px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0';
+      div.textContent = fmt;
+      div.onclick = () => { input.value = fmt; dropdown.classList.add('hidden'); };
+      dropdown.appendChild(div);
+    });
+    dropdown.classList.remove('hidden');
+  }, 150);
+}
+
+async function toggleFormatDropdown(forceOpen){
+  const dropdown = document.getElementById('formatDropdown');
+  const input    = document.getElementById('locationFormat');
+
+  const shouldOpen = (typeof forceOpen === 'boolean')
+    ? forceOpen
+    : dropdown.classList.contains('hidden');
+
+  if (!shouldOpen){ dropdown.classList.add('hidden'); return; }
+
+  const items = await ensureFormats();
+  const list = items.slice(0, 100);
+
+  dropdown.innerHTML = '';
+  list.forEach(fmt => {
+    const div = document.createElement('div');
+    div.className = 'px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0';
+    div.textContent = fmt;
+    div.onclick = () => { input.value = fmt; dropdown.classList.add('hidden'); };
+    dropdown.appendChild(div);
+  });
+  dropdown.classList.remove('hidden');
+}
+
+    async function toggleLocationDropdown(forceOpen){
+  const dropdown = document.getElementById('locationDropdown');
+  const input    = document.getElementById('locationInput');
+
+  const shouldOpen = (typeof forceOpen === 'boolean')
+    ? forceOpen
+    : dropdown.classList.contains('hidden');
+
+  if (!shouldOpen){ dropdown.classList.add('hidden'); return; }
+
+  const items = await ensureLocations();
+  const list = items.slice(0, 100);
+
+  dropdown.innerHTML = '';
+  list.forEach(loc => {
+    const div = document.createElement('div');
+    div.className = 'px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0';
+    div.textContent = loc;
+    div.onclick = () => { input.value = loc; dropdown.classList.add('hidden'); };
+    dropdown.appendChild(div);
+  });
+  dropdown.classList.remove('hidden');
+}
 
 /** ---------- แนบรูป: พรีวิว + ลบไฟล์ที่เลือก ---------- */
 const MAX_FILES = 10;
