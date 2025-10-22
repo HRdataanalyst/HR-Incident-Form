@@ -1520,23 +1520,11 @@ async function ensureLocations(){
   return _LOCATIONS;
 }
 
-    let _FORMATS = null;
-async function ensureFormats(){
-  if (Array.isArray(_FORMATS)) return _FORMATS;
-  try{
-    const rs = await apiGet({ action:'formats' }); // 🔹 เรียกคอลัมน์ A
-    _FORMATS = (rs.ok ? rs.rows : []) || [];
-  }catch{ _FORMATS = []; }
-  return _FORMATS;
-}
-
 let _locDebounce = 0;
 async function typeaheadLocation(q){
-  // แสดง dropdown เฉพาะตอนมีข้อความ หรือจงใจอยากเห็นลิสต์
   const dropdown = document.getElementById('locationDropdown');
   const input    = document.getElementById('locationInput');
 
-  // debounce 150ms กันกระพริบ
   clearTimeout(_locDebounce);
   _locDebounce = setTimeout(async () => {
     if (!q) { dropdown.classList.add('hidden'); return; }
@@ -1544,7 +1532,7 @@ async function typeaheadLocation(q){
     const items = await ensureLocations();
     const list = items
       .filter(v => v.toLowerCase().includes(q.toLowerCase()))
-      .slice(0, 50); // จำกัดจำนวนแสดง
+      .slice(0, 50);
 
     if (list.length === 0){ dropdown.classList.add('hidden'); return; }
 
