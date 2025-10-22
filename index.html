@@ -1520,6 +1520,16 @@ async function ensureLocations(){
   return _LOCATIONS;
 }
 
+    let _FORMATS = null;
+async function ensureFormats(){
+  if (Array.isArray(_FORMATS)) return _FORMATS;
+  try{
+    const rs = await apiGet({ action:'formats' }); // 🔹 เรียกคอลัมน์ A
+    _FORMATS = (rs.ok ? rs.rows : []) || [];
+  }catch{ _FORMATS = []; }
+  return _FORMATS;
+}
+
 let _locDebounce = 0;
 async function typeaheadLocation(q){
   // แสดง dropdown เฉพาะตอนมีข้อความ หรือจงใจอยากเห็นลิสต์
