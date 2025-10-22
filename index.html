@@ -421,14 +421,31 @@ input[type="time"]{
 
   <!-- สถานที่เกิดเหตุ: พิมพ์ได้ + มีรายการแนะนำจากชีต -->
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    <div class="relative">
-      <label class="block text-gray-700 font-semibold mb-1 text-xs">สถานที่เกิดเหตุ</label>
-      <input type="text" id="locationInput"
-        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-        placeholder="พิมพ์เพื่อค้นหาสถานที่..." autocomplete="off" oninput="typeaheadLocation(this.value)" />
-      <div id="locationDropdown"
-        class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
-    </div>
+    <!-- Format + Location -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  <!-- Format -->
+  <div>
+    <label class="block text-gray-700 font-semibold mb-1 text-xs">Format</label>
+    <input
+      type="text"
+      id="locationFormat"
+      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+      placeholder="เช่น ชั้น/อาคาร/โซนผลิต" />
+  </div>
+
+  <!-- Location -->
+  <div class="relative">
+    <label class="block text-gray-700 font-semibold mb-1 text-xs">Location</label>
+    <input
+      type="text"
+      id="locationInput"
+      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+      placeholder="พิมพ์เพื่อค้นหาสถานที่..." autocomplete="off"
+      oninput="typeaheadLocation(this.value)" />
+    <div id="locationDropdown"
+      class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
+  </div>
+</div>
 
     <!-- ผู้เกี่ยวข้อง (เหมือนเดิม) -->
     <div>
@@ -1307,7 +1324,9 @@ function toggleTimeEdit(){
   }
 
   // ✅ ดึงค่าสนามต่างๆ จากหน้า
-  const Location = (document.getElementById('locationInput').value || '').trim();
+  const Location = (LocationFormat && LocationOnly)
+  ? `${LocationFormat} - ${LocationOnly}`
+  : (LocationFormat || LocationOnly);
   const EmpName  = (document.getElementById('employeeName').value || '').trim();
   const EmpId    = (document.getElementById('employeeCode').value || '').trim();
   const Dept     = (document.getElementById('employeeDepartment').value || '').trim();
