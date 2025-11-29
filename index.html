@@ -1354,12 +1354,15 @@ function toggleTimeEdit(){
     return;
   }
 
+     // ใช้ detailText เป็น Comment ที่เก็บในคอลัมน์ F
+const Comment = detailText;
+
   // ✅ ดึงค่า Format + Location
   const LocationFormat = (document.getElementById('locationFormat').value || '').trim();
   const LocationOnly   = (document.getElementById('locationInput').value || '').trim();
-  const Location = (LocationFormat && LocationOnly)
-    ? `${LocationFormat} - ${LocationOnly}`
-    : (LocationFormat || LocationOnly);
+
+  const Format   = LocationFormat;
+  const Location = LocationOnly;
 
   // ข้อมูลผู้แจ้ง
   const EmpName  = (document.getElementById('employeeName').value || '').trim();
@@ -1397,6 +1400,7 @@ function toggleTimeEdit(){
       SubCategory, 
       Detail, 
       Comment,
+      Format,
       Location,
       EmpId, 
       EmpName, 
