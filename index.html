@@ -1389,10 +1389,19 @@ function toggleTimeEdit(){
     showLoading('กำลังอัปโหลดไฟล์และสร้างเคส...');
     const Images = await collectImagesFromInput();
 
+    const Comment     = detailText;
+
     const payload = {
       action: 'create',
-      Category, SubCategory, Detail, Location,
-      EmpId, EmpName, Dept, Phone,
+      Category, 
+      SubCategory, 
+      Detail, 
+      Comment,
+      Location,
+      EmpId, 
+      EmpName, 
+      Dept, 
+      Phone,
       Images
     };
 
