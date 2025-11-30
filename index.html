@@ -540,81 +540,63 @@ input[type="time"]{
     </main>
 
   <!-- History Page -->
-  <section id="historyPage" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="text-center mb-8">
-      <h1 class="text-4xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">ประวัติการแจ้งเหตุการณ์</h1>
-      <p class="text-gray-600">ค้นหาและจัดการเคสของคุณ</p>
-    </div>
+  <section id="historyPage" class="hidden max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="text-center mb-4">
+  <h1 class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-1">
+    ประวัติการแจ้งเหตุการณ์
+  </h1>
+  <p class="text-gray-600 text-sm sm:text-base">ค้นหาและจัดการเคสของคุณ</p>
+</div>
 
     <!-- Login -->
-    <div id="historyLoginSection" class="bg-white rounded-2xl shadow-xl p-8 mb-8">
-      <div class="text-center mb-6">
-        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <div id="historyLoginSection" class="bg-white rounded-xl shadow-lg p-6 mb-6 max-w-xl mx-auto">
+      <div class="text-center mb-4">
+        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         </div>
-        <h3 class="text-2xl font-bold text-gray-800 mb-2">ยืนยันตัวตนเพื่อดูประวัติ</h3>
-        <p class="text-gray-600">กรุณากรอกรหัสพนักงานเพื่อเข้าดูประวัติการแจ้งเหตุการณ์</p>
+        <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">ยืนยันตัวตนเพื่อดูประวัติ</h3>
+<p class="text-gray-600 text-sm sm:text-base">
+  กรุณากรอกรหัสพนักงานเพื่อเข้าดูประวัติการแจ้งเหตุการณ์
+</p>
       </div>
-      <form onsubmit="verifyHistoryAccess(event)" class="max-w-md mx-auto">
-        <div class="mb-6">
-          <label class="block text-gray-700 font-semibold mb-2 flex items-center justify-center">รหัสพนักงาน</label>
-          <input type="text" id="historyEmployeeId" required class="w-full px-4 py-3 border-2 border-green-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg text-center" placeholder="กรุณาใส่รหัสพนักงาน" />
-        </div>
-        <button type="submit" class="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl shadow-lg">เข้าดูประวัติ</button>
-      </form>
+      <form onsubmit="verifyHistoryAccess(event)" class="max-w-sm mx-auto">
+  <div class="mb-4">
+    <label class="block text-gray-700 font-semibold mb-2 flex items-center justify-center text-sm">
+      รหัสพนักงาน
+    </label>
+    <input type="text" id="historyEmployeeId" required
+      class="w-full px-3 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base text-center"
+      placeholder="กรุณาใส่รหัสพนักงาน" />
+  </div>
+  <button type="submit"
+    class="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg shadow-md text-sm sm:text-base">
+    เข้าดูประวัติ
+  </button>
+</form>
     </div>
 
     <!-- History content -->
     <div id="historyContent" class="hidden">
-      <div class="bg-white rounded-2xl shadow-xl p-8 mb-8">
-        <div class="max-w-md mx-auto">
-          <label class="block text-gray-700 font-semibold mb-3 text-center">🔍 ค้นหาด้วยรหัสเคส</label>
-          <div class="flex gap-3">
-            <input type="text" id="caseSearch" class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg" placeholder="เช่น HR-2025-001" />
-            <button onclick="searchByCase()" class="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-semibold">ค้นหา</button>
-          </div>
-        </div>
-      </div>
-      <div id="searchResults" class="hidden">
-        <h3 class="text-2xl font-bold text-gray-800 mb-4">ผลการค้นหา</h3>
-        <div id="resultsContainer" class="space-y-4"></div>
-      </div>
-
-      <div class="bg-white rounded-2xl shadow-xl p-8">
-        <div class="flex justify-between items-center mb-6">
-          <h3 class="text-2xl font-bold text-gray-800">เคสล่าสุดของคุณ</h3>
-          <button onclick="logoutHistory()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">ออกจากระบบ</button>
-        </div>
-        <div class="space-y-4">
-          <div class="bg-gradient-to-r from-red-50 to-red-100 rounded-xl p-6 border-l-4 border-red-500">
-            <div class="flex justify-between items-start">
-              <div>
-                <h4 class="text-lg font-bold text-gray-800 mb-2">HR-2025-001 - การเลิกจ้าง</h4>
-                <p class="text-gray-600 mb-2">ประเภท: ลาออก | วันที่: 19 ต.ค. 2025</p>
-                <p class="text-sm text-gray-500">รายละเอียด: พนักงานแผนกผลิตขอลาออกด้วยเหตุผลส่วนตัว</p>
-              </div>
-              <div class="flex flex-col gap-2">
-                <span class="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full">รอดำเนินการ</span>
-                <button onclick="viewCaseHistory('HR-2025-001')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">ดูรายละเอียด</button>
-                <button onclick="closeCaseByEmployee('HR-2025-001')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">ปิดเคส</button>
-              </div>
-            </div>
-          </div>
-          <div class="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl p-6 border-l-4 border-orange-500">
-            <div class="flex justify-between items-start">
-              <div>
-                <h4 class="text-lg font-bold text-gray-800 mb-2">HR-2025-002 - อุบัติเหตุ</h4>
-                <p class="text-gray-600 mb-2">ประเภท: บาดเจ็บ | วันที่: 18 ต.ค. 2025</p>
-                <p class="text-sm text-gray-500">รายละเอียด: บาดเจ็บจากเครื่องจักรในแผนกผลิต</p>
-              </div>
-              <div class="flex flex-col gap-2">
-                <span class="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">เสร็จสิ้น</span>
-                <button onclick="viewCaseHistory('HR-2025-002')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">ดูรายละเอียด</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div class="bg-white rounded-xl shadow-lg p-6 mb-6 max-w-xl mx-auto">
+  <div class="max-w-md mx-auto">
+    <label class="block text-gray-700 font-semibold mb-2 text-center text-sm">
+      🔍 ค้นหาด้วยรหัสเคส
+    </label>
+    <div class="flex gap-2">
+      <input type="text" id="caseSearch"
+        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm sm:text-base"
+        placeholder="เช่น HR-2025-001" />
+      <button onclick="searchByCase()"
+        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm sm:text-base">
+        ค้นหา
+      </button>
+    </div>
+  </div>
+</div>
+      <div id="searchResults" class="hidden max-w-4xl mx-auto">
+  <h3 class="text-xl font-bold text-gray-800 mb-3">ผลการค้นหา</h3>
+  <div id="resultsContainer" class="space-y-3"></div>
+</div>
     </div>
   </section>
 
@@ -1702,24 +1684,84 @@ async function loadHistoryCases(empId){
   }
 }
 
-    function viewCase(id){
-      const data = {
-        'HR-2025-001': { title:'HR-2025-001 - การเลิกจ้าง - ลาออก', priority:'ด่วน', location:'โรงงานลาดกระบัง', date:'19 ตุลาคม 2025', time:'14:30', details:'พนักงานแผนกผลิตขอลาออกด้วยเหตุผลส่วนตัว ต้องดำเนินการเอกสารและส่งมอบงาน', reporter:'คุณสมชาย ใจดี', status:'กำลังดำเนินการ' }
-      }[id];
-      if(!data) return;
-      document.getElementById('caseTitle').textContent = data.title;
-      document.getElementById('caseContent').innerHTML = `
-        <div class="grid md:grid-cols-2 gap-4">
-          <div><strong>สถานะ:</strong> ${data.status}</div>
-          <div><strong>ระดับ:</strong> <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">${data.priority}</span></div>
-          <div><strong>สถานที่:</strong> ${data.location}</div>
-          <div><strong>วันที่:</strong> ${data.date}</div>
-          <div><strong>เวลา:</strong> ${data.time}</div>
-          <div><strong>ผู้แจ้ง:</strong> ${data.reporter}</div>
-        </div>
-        <div class="mt-4"><strong>รายละเอียด:</strong><p class="mt-2 p-4 bg-gray-50 rounded-lg">${data.details}</p></div>`;
-      document.getElementById('caseModal').classList.remove('hidden');
+    async function viewCase(id){
+  let row = null;
+
+  // 1) พยายามหาเคสจาก historyCases ก่อน
+  if (Array.isArray(historyCases) && historyCases.length){
+    row = historyCases.find(r =>
+      String(r['CaseId'] || '').trim() === String(id).trim()
+    );
+  }
+
+  // 2) ถ้าไม่เจอ ลองถาม Apps Script ด้วย action=getbyid (ถ้าคุณมี endpoint นี้)
+  if (!row){
+    try{
+      const rs = await apiGet({ action:'getbyid', caseId: id });
+      if (rs.ok && rs.obj){
+        row = rs.obj;
+      }
+    }catch(err){
+      console.error(err);
     }
+  }
+
+  if (!row){
+    alert('ไม่พบข้อมูลเคส');
+    return;
+  }
+
+  const caseId   = String(row['CaseId']   || '').trim();
+  const category = String(row['Category'] || '').trim();
+  const subCat   = String(row['SubCategory'] || '').trim();
+  const typeText = [category, subCat].filter(Boolean).join(' - ');
+
+  const status   = String(row['Status']   || '').trim() || '-';
+  const location = String(row['Location'] || '').trim();
+  const ts       = row['Timestamp'];
+
+  let dateText = '';
+  let timeText = '';
+  if (ts){
+    const s = String(ts);
+    const parts = s.split(' ');
+    if (parts.length >= 2){
+      dateText = parts[0];
+      timeText = parts[1];
+    } else {
+      dateText = s;
+    }
+  }
+
+  const empName  = String(row['EmpName'] || '').trim();
+  const empId    = String(row['EmpId']   || '').trim();
+  const reporter = empName && empId ? `${empName} (${empId})` : (empName || empId || '');
+
+  const detailMain = String(row['Detail']  || '').trim();
+  const comment    = String(row['Comment'] || '').trim();
+  const details    = [detailMain, comment].filter(Boolean).join('\n\n');
+
+  document.getElementById('caseTitle').textContent =
+    (caseId ? caseId + ' - ' : '') + (typeText || 'รายละเอียดเคส');
+
+  document.getElementById('caseContent').innerHTML = `
+    <div class="grid md:grid-cols-2 gap-4">
+      <div><strong>สถานะ:</strong> ${status}</div>
+      <div><strong>ประเภท:</strong> ${typeText || '-'}</div>
+      <div><strong>สถานที่:</strong> ${location || '-'}</div>
+      <div><strong>วันที่:</strong> ${dateText || '-'}</div>
+      <div><strong>เวลา:</strong> ${timeText || '-'}</div>
+      <div><strong>ผู้แจ้ง:</strong> ${reporter || '-'}</div>
+    </div>
+    <div class="mt-4">
+      <strong>รายละเอียด:</strong>
+      <p class="mt-2 p-4 bg-gray-50 rounded-lg whitespace-pre-line">${details || '-'}</p>
+    </div>
+  `;
+
+  document.getElementById('caseModal').classList.remove('hidden');
+}
+    
     function closeCaseModal(){ document.getElementById('caseModal').classList.add('hidden'); }
 
     /** ---------- สถานที่เกิดเหตุ: โหลดจากชีต + แคช (Format + Location) --------- */
