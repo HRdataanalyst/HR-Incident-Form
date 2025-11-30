@@ -1421,6 +1421,7 @@ const Comment = detailText;
 }
 
     function resetForm(){
+  // รีเซ็ตตัวแปร step / category
   currentStep = 1;
   selectedCategory = '';
   selectedCategoryTH = '';
@@ -1428,15 +1429,45 @@ const Comment = detailText;
   selectedSubCategory = '';
   selectedSubCategoryName = '';
   selectedDetailName = '';
-      
-      const ids = ['introStep','categoryStep','subCategoryStep','detailsStep','successStep'];
+
+  // แสดงหน้า Step 1 ใหม่ และรีเซ็ตสถานะ step บน progress bar
+  const ids = ['introStep','categoryStep','subCategoryStep','detailsStep','successStep'];
   ids.forEach((id, i)=>{
     const el = document.getElementById(id);
-    if(i===0) el.classList.remove('hidden'); else el.classList.add('hidden');
-    if(i < 4){ const st = document.getElementById(`step${i+1}`); st.classList.remove('active','completed'); }
+    if (i === 0) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+    if (i < 4){
+      const st = document.getElementById(`step${i+1}`);
+      st.classList.remove('active','completed');
+    }
   });
   document.getElementById('step1').classList.add('active');
-  document.querySelectorAll('form').forEach(f=>f.reset());
+
+  // รีเซ็ตค่าทุก form element
+  document.querySelectorAll('form').forEach(f => f.reset());
+
+  // 🔹 รีเซ็ตตะกร้าไฟล์รูป + preview รูป
+  try {
+    if (typeof uploadDT !== 'undefined') {
+      // ล้าง DataTransfer (ตะกร้าไฟล์)
+      uploadDT = new DataTransfer();
+    }
+    if (typeof fileInput !== 'undefined' && fileInput) {
+      // ล้างค่าที่ input file และผูกกลับกับตะกร้าใหม่ (ว่าง)
+      fileInput.value = '';
+      if (typeof uploadDT !== 'undefined') {
+        fileInput.files = uploadDT.files;
+      }
+    }
+    if (typeof previewEl !== 'undefined' && previewEl) {
+      // ล้างรูปที่แสดงบนหน้าจอ
+      previewEl.innerHTML = '';
+    }
+  } catch (e) {
+    console.error('reset images error', e);
+  }
+
+  // กลับไปหน้าแบบฟอร์มแจ้งเหตุ (แท็บรายงาน)
   showPage('report');
 }
 
