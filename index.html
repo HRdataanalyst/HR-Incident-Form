@@ -823,17 +823,45 @@ let historyFilterStatus = 'ALL';
 
     // ===== Page router =====
     function showPage(page) {
-      currentPage = page;
-      document.getElementById('reportPage').classList.add('hidden');
-      document.getElementById('historyPage').classList.add('hidden');
-      document.getElementById('dashboardPage').classList.add('hidden');
-      if (page === 'report')      document.getElementById('reportPage').classList.remove('hidden');
-      else if (page === 'history')document.getElementById('historyPage').classList.remove('hidden');
-      else if (page === 'dashboard') document.getElementById('dashboardPage').classList.remove('hidden');
-      // ------- เพิ่มบรรทัดใหม่เพื่อปิดเมนูมือถือถ้าเปิดอยู่ -------
-  const mm = document.getElementById('mobileMenu');
-  if (mm && !mm.classList.contains('hidden')) mm.classList.add('hidden');
+  // จดจำหน้าปัจจุบัน
+  currentPage = page;
+
+  // --------- รีเซ็ตค่าของแต่ละหน้า ---------
+  if (page === 'report') {
+    // หน้าแจ้งเหตุการณ์ → รีเซ็ตทุก Step / ฟอร์ม / รูป
+    if (typeof resetForm === 'function') {
+      resetForm();
     }
+  } else if (page === 'history') {
+    // หน้า History → ให้กลับสู่หน้า Login และล้างผลค้นหา/Filter
+    if (typeof logoutHistory === 'function') {
+      logoutHistory();
+    }
+  } else if (page === 'dashboard') {
+    // ถ้าอนาคตมีฟังก์ชันรีเซ็ต Dashboard ให้เรียกตรงนี้ได้ เช่น:
+    // if (typeof resetDashboard === 'function') resetDashboard();
+  }
+
+  // --------- ซ่อนทุกหน้า ---------
+  document.getElementById('reportPage').classList.add('hidden');
+  document.getElementById('historyPage').classList.add('hidden');
+  document.getElementById('dashboardPage').classList.add('hidden');
+
+  // --------- แสดงหน้าเป้าหมาย ---------
+  if (page === 'report') {
+    document.getElementById('reportPage').classList.remove('hidden');
+  } else if (page === 'history') {
+    document.getElementById('historyPage').classList.remove('hidden');
+  } else if (page === 'dashboard') {
+    document.getElementById('dashboardPage').classList.remove('hidden');
+  }
+
+  // --------- ปิดเมนูมือถือถ้าเปิดอยู่ ---------
+  const mm = document.getElementById('mobileMenu');
+  if (mm && !mm.classList.contains('hidden')) {
+    mm.classList.add('hidden');
+  }
+}
 
     // === CACHE CONFIG ===
   const CATEGORY_CACHE_KEY = 'hrir_categories_v1';
@@ -1500,7 +1528,16 @@ const Comment = detailText;
 }
 
     // ===== HRBP login & demo dashboard =====
-    function showHRBPLogin(){ document.getElementById('hrbpModal').classList.remove('hidden'); }
+    function showHRBPLogin() {
+  // เคลียร์ค่าที่กรอก HRBP ID ทุกครั้งก่อนแสดง Modal
+  const input = document.getElementById('hrbpId');
+  if (input) {
+    input.value = '';
+  }
+
+  // แสดงกล่อง Login HRBP
+  document.getElementById('hrbpModal').classList.remove('hidden');
+}
     function closeHRBPModal(){ document.getElementById('hrbpModal').classList.add('hidden'); }
     function verifyHRBP(e){
       e.preventDefault();
