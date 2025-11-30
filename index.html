@@ -1570,13 +1570,21 @@ function logoutHistory(){
   // รีเซ็ตสีปุ่ม filter ให้กลับมาที่ "ทั้งหมด"
   const filterBtns = document.querySelectorAll('.history-filter-btn');
   filterBtns.forEach(btn => {
+    // ล้างสีที่เคยเซ็ตไว้ทั้งหมด
+    btn.classList.remove(
+      'bg-blue-600','text-white',
+      'bg-yellow-100','text-yellow-800',
+      'bg-orange-100','text-orange-800',
+      'bg-green-100','text-green-800'
+    );
+    // ตั้งค่าเริ่มต้นให้เป็นปุ่มเทา
+    btn.classList.add('bg-gray-100','text-gray-700');
+
     const status = btn.getAttribute('data-history-filter') || 'ALL';
     if (status === 'ALL') {
-      btn.classList.add('bg-blue-600','text-white');
+      // ปุ่ม "ทั้งหมด" เป็นสีน้ำเงิน
       btn.classList.remove('bg-gray-100','text-gray-700');
-    } else {
-      btn.classList.add('bg-gray-100','text-gray-700');
-      btn.classList.remove('bg-blue-600','text-white');
+      btn.classList.add('bg-blue-600','text-white');
     }
   });
 }
@@ -1792,14 +1800,33 @@ document.addEventListener('DOMContentLoaded', () => {
       const status = btn.getAttribute('data-history-filter') || 'ALL';
       historyFilterStatus = status;
 
-      // เปลี่ยนสีปุ่มให้ตัวที่เลือกเด่นขึ้น
+      // รีเซ็ตปุ่มทุกอันให้เป็นโหมด "ยังไม่เลือก" = เทา
       filterBtns.forEach(b => {
-        b.classList.remove('bg-blue-600','text-white');
+        b.classList.remove(
+          'bg-blue-600','text-white',
+          'bg-yellow-100','text-yellow-800',
+          'bg-orange-100','text-orange-800',
+          'bg-green-100','text-green-800'
+        );
         b.classList.add('bg-gray-100','text-gray-700');
       });
 
-      btn.classList.add('bg-blue-600','text-white');
+      // ตั้งสีตามสถานะที่เลือก
       btn.classList.remove('bg-gray-100','text-gray-700');
+
+      if (status === 'ALL') {
+        // ทั้งหมด = ฟ้า
+        btn.classList.add('bg-blue-600','text-white');
+      } else if (status === 'รอตรวจสอบ') {
+        // รอตรวจสอบ = เหลืองอ่อน
+        btn.classList.add('bg-yellow-100','text-yellow-800');
+      } else if (status === 'รอดำเนินการ') {
+        // รอดำเนินการ = ส้ม
+        btn.classList.add('bg-orange-100','text-orange-800');
+      } else if (status === 'ปิดเคส') {
+        // ปิดเคส = เขียวอ่อน
+        btn.classList.add('bg-green-100','text-green-800');
+      }
 
       // แสดงผลใหม่ตาม filter ที่เลือก
       showSearchResults(historyCurrentRows);
