@@ -1597,48 +1597,61 @@ async function loadHistoryCases(empId){
     historyCases = rs.rows || [];
 
     // map ให้เป็นรูปแบบที่ showSearchResults ใช้
-const mapped = historyCases.map(r => {
-  const baseStatus   = String(r['Status'] || '').trim();          // จากคอลัมน์ S
-  const closeStatus  = String(r['Status-Close'] || '').trim();    // จากคอลัมน์ V
-  const closeAtStr   = r['Date-Close'] ? String(r['Date-Close']) : '';  // จากคอลัมน์ W
+    const mapped = historyCases.map(r => {
 
-  const caseId   = String(r['CaseId'] || '').trim();
-  const dateStr  = r['Timestamp'] ? String(r['Timestamp']) : '';
-  const empName  = String(r['EmpName'] || '').trim();
-  const empIdVal = String(r['EmpId']   || '').trim();
+      // S = Status (รอตรวจสอบ)
+      const baseStatus  = String(r['Status'] || '').trim();
 
-  const typeText = [
-    String(r['Category']    || '').trim(),
-    String(r['SubCategory'] || '').trim()
-  ].filter(Boolean).join(' - ') || 'ไม่ระบุประเภท';
+      // T = Status-HRBP (รอดำเนินการ / สถานะจาก HRBP)
+      const hrbpStatus  = String(r['Status-HRBP'] || '').trim();
 
-  const detailText =
-    String(r['Detail']  || '').trim() ||
-    String(r['Comment'] || '').trim() || '';
+      // V/W = ปิดเคส
+      const closeStatus = String(r['Status-Close'] || '').trim();
+      const closeAtStr  = r['Date-Close'] ? String(r['Date-Close']) : '';
 
-  // ถ้ามีค่าใน Status-Close แสดงว่าเคสถูกปิดแล้ว
-  const isClosed = !!closeStatus;
+      const caseId   = String(r['CaseId'] || '').trim();
+      const dateStr  = r['Timestamp'] ? String(r['Timestamp']) : '';
+      const empName  = String(r['EmpName'] || '').trim();
+      const empIdVal = String(r['EmpId']   || '').trim();
 
-  // เอาไว้แสดงใน badge บนการ์ด
-  let statusDisplay = baseStatus || '-';
-  if (isClosed) {
-    // ถ้าคุณอยากโชว์ข้อความจาก V เช่น "เสร็จสิ้น-ปิดเคส"
-    statusDisplay = closeStatus || 'เสร็จสิ้น-ปิดเคส';
-  }
+      const typeText = [
+        String(r['Category']    || '').trim(),
+        String(r['SubCategory'] || '').trim()
+      ].filter(Boolean).join(' - ') || 'ไม่ระบุประเภท';
 
-  return {
-    id:       caseId,
-    type:     typeText,
-    date:     dateStr,
-    employee: empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
-    status:   statusDisplay,
-    isClosed: isClosed,      // ใช้ช่วย filter และซ่อนปุ่มปิดเคส
-    closedAt: closeAtStr,    // เผื่ออยากเอาไปแสดงในอนาคต
-    details:  detailText
-  };
-});
+      const detailText =
+        String(r['Detail']  || '').trim() ||
+        String(r['Comment'] || '').trim() || '';
 
-showSearchResults(mapped);
+      // ถ้ามีค่าใน Status-Close แสดงว่าเคสถูกปิดแล้ว
+      const isClosed = !!closeStatus;
+
+      // สถานะที่ใช้แสดงบน badge
+      let statusDisplay = baseStatus || '-';
+      if (isClosed) {
+        // เคสปิดแล้ว → ใช้ข้อความจากคอลัมน์ V
+        statusDisplay = closeStatus || 'เสร็จสิ้น-ปิดเคส';
+      } else if (hrbpStatus) {
+        // ยังไม่ปิด และ HRBP มีอัปเดตสถานะ → ใช้สถานะจากคอลัมน์ T
+        statusDisplay = hrbpStatus;
+      }
+
+      return {
+        id:         caseId,
+        type:       typeText,
+        date:       dateStr,
+        employee:   empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
+        status:     statusDisplay, // เอาไว้แสดงบนป้ายสถานะ
+        baseStatus: baseStatus,    // S
+        hrbpStatus: hrbpStatus,    // T
+        isClosed:   isClosed,      // ใช้ช่วย filter และซ่อนปุ่มปิดเคส
+        closedAt:   closeAtStr,    // วันที่ปิดเคส
+        details:    detailText
+      };
+
+    });
+
+    showSearchResults(mapped);
 
   }catch(err){
     console.error(err);
@@ -1670,7 +1683,11 @@ showSearchResults(mapped);
   }
 
   const mapped = target.map(r => {
-    const status   = String(r['Status'] || '').trim() || '-';
+    const baseStatus  = String(r['Status'] || '').trim();          // S
+    const hrbpStatus  = String(r['Status-HRBP'] || '').trim();     // T
+    const closeStatus = String(r['Status-Close'] || '').trim();    // V
+    const closeAtStr  = r['Date-Close'] ? String(r['Date-Close']) : ''; // W
+
     const caseId2  = String(r['CaseId'] || '').trim();
     const dateStr  = r['Timestamp'] ? String(r['Timestamp']) : '';
     const empName  = String(r['EmpName'] || '').trim();
@@ -1685,13 +1702,26 @@ showSearchResults(mapped);
       String(r['Detail']  || '').trim() ||
       String(r['Comment'] || '').trim() || '';
 
+    const isClosed = !!closeStatus;
+
+    let statusDisplay = baseStatus || '-';
+    if (isClosed) {
+      statusDisplay = closeStatus || 'เสร็จสิ้น-ปิดเคส';
+    } else if (hrbpStatus) {
+      statusDisplay = hrbpStatus;
+    }
+
     return {
-      id:       caseId2,
-      type:     typeText,
-      date:     dateStr,
-      employee: empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
-      status:   status,
-      details:  detailText
+      id:         caseId2,
+      type:       typeText,
+      date:       dateStr,
+      employee:   empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
+      status:     statusDisplay,
+      baseStatus: baseStatus,
+      hrbpStatus: hrbpStatus,
+      isClosed:   isClosed,
+      closedAt:   closeAtStr,
+      details:    detailText
     };
   });
 
@@ -1720,19 +1750,21 @@ showSearchResults(mapped);
     rowsToRender = historyCurrentRows.filter(r => {
 
       if (historyFilterStatus === 'ปิดเคส') {
-        // ปุ่มนี้ให้ดูจากคอลัมน์ V (isClosed = true)
+        // ปิดเคส → ดูจากคอลัมน์ V (isClosed = true)
         return !!r.isClosed;
       }
 
       if (historyFilterStatus === 'รอตรวจสอบ') {
-        return !r.isClosed && r.status.includes('รอตรวจสอบ');
+        // รอตรวจสอบ → ดูจากคอลัมน์ S (baseStatus)
+        return !r.isClosed && (r.baseStatus || '').includes('รอตรวจสอบ');
       }
 
       if (historyFilterStatus === 'รอดำเนินการ') {
-        // ในอนาคตสามารถปรับ logic ให้ผูกกับ Status-HRBP ได้
-        return !r.isClosed && r.status.includes('รอดำเนินการ');
+        // รอดำเนินการ → ดูจากคอลัมน์ T (Status-HRBP)
+        return !r.isClosed && (r.hrbpStatus || '').includes('รอดำเนินการ');
       }
 
+      // กรณีอื่น (กันพลาด) → แสดงทั้งหมด
       return true;
     });
   }
