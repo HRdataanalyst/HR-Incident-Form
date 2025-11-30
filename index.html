@@ -1323,7 +1323,7 @@ async function verifyEmployee(e){
   if (iconEl) {
     iconEl.src = './clipboard.png'; // ชื่อไฟล์ตามที่อัพไว้ (ตัวพิมพ์เล็ก-ใหญ่ต้องตรง)
     iconEl.className = 'w-12 h-12 mr-3 object-contain';
-  }
+  } 
 
   // ตั้งหัวเรื่อง
   let title = `รายละเอียด${catLabel}`;
@@ -1696,37 +1696,45 @@ function logoutHRBP() {
     
     function viewFactoryDetails(factoryId){ showHRBPLogin(); window.selectedFactory=factoryId; }
 
-    // ล็อกอินหน้า History ด้วยรหัสพนักงานจริง (เรียก Apps Script action=employee)
-async function verifyHistoryAccess(e){
+    // ✅ เวอร์ชันใหม่ – ใช้ fetch ตรง ๆ แบบเดียวกับ verifyEmployee
+async function verifyHistoryAccess(e) {
   e.preventDefault();
-  const input = document.getElementById('historyEmployeeId');
-  const empId = input.value.trim();
 
-  if (!empId){
+  const input = document.getElementById('historyEmployeeId');
+  const empId = (input.value || '').trim();
+
+  if (!empId) {
     alert('กรุณากรอกรหัสพนักงาน');
     return;
   }
 
-  try{
-    // เรียก Google Script -> handleEmployeeLookup_
-    const rs = await apiGet({ action:'employee', empId });
+  try {
+    // เรียก Google Script เพื่อเช็กข้อมูลพนักงาน
+    const url = API_URL + '?action=employee&empId=' + encodeURIComponent(empId);
+    const res = await fetch(url, { method: 'GET' });
 
-    if (!rs.ok || !rs.data){
-      alert(rs.error || 'รหัสพนักงานไม่ถูกต้อง กรุณาลองใหม่');
+    if (!res.ok) {
+      throw new Error('HTTP ' + res.status);
+    }
+
+    const data = await res.json();
+
+    if (!data.ok || !data.data) {
+      alert(data.error || 'รหัสพนักงานไม่ถูกต้อง กรุณาลองใหม่');
       return;
     }
 
+    // เก็บสถานะพนักงานและเปิดหน้าประวัติ
     isHistoryLoggedIn = true;
-    historyEmp = rs.data;  // เก็บข้อมูลพนักงานไว้ใช้ต่อ
+    historyEmp = data.data;
 
-    // ซ่อนหน้าล็อกอิน / เปิดหน้าเนื้อหา History
     document.getElementById('historyLoginSection').classList.add('hidden');
     document.getElementById('historyContent').classList.remove('hidden');
 
-    // โหลดรายการเคสของพนักงานคนนี้
+    // โหลดเคสของพนักงานคนนี้
     await loadHistoryCases(empId);
 
-  }catch(err){
+  } catch (err) {
     console.error(err);
     alert('เกิดข้อผิดพลาดในการตรวจสอบรหัสพนักงาน');
   }
@@ -1997,6 +2005,88 @@ async function confirmHRBPCase(caseId) {
   });
 }
 
+    // ✅ ดึงรายการเคสของพนักงานจาก Google Script แล้วเตรียมให้หน้า History ใช้
+async function loadHistoryCases(empId){
+  try{
+    const rs = await apiGet({ action:'listbyemp', empId });
+
+    if (!rs.ok){
+      alert(rs.error || 'ไม่สามารถโหลดรายการเคสได้');
+      historyCases = [];
+      showSearchResults([]);
+      return;
+    }
+
+    // เก็บข้อมูลดิบจากชีต Response Form ไว้ใช้ต่อ (searchByCase, viewCase)
+    historyCases = rs.rows || [];
+
+    if (!historyCases.length){
+      showSearchResults([]);
+      return;
+    }
+
+    // แปลงข้อมูลให้เป็นรูปที่ showSearchResults ใช้ (ใช้ logic เดียวกับ searchByCase)
+    const mapped = historyCases.map(r => {
+      const baseStatus  = String(r['Status'] || '').trim();          // S
+      const hrbpStatus  = String(r['Status-HRBP'] || '').trim();     // T
+      const closeStatus = String(r['Status-Close'] || '').trim();
+      const closeRaw    = r['Date-Close'] ? String(r['Date-Close']) : '';
+      const closeAtDisplay = closeRaw ? formatDateTime(closeRaw) : '';
+
+      const caseId2  = String(r['CaseId'] || '').trim();
+
+      const rawTimestamp = r['Timestamp'] ? String(r['Timestamp']) : '';
+      const dateRaw      = rawTimestamp;
+      const dateDisplay  = rawTimestamp ? formatDateTime(rawTimestamp) : '';
+
+      const empName  = String(r['EmpName'] || '').trim();
+      const empIdVal = String(r['EmpId']   || '').trim();
+
+      const typeText = [
+        String(r['Category']    || '').trim(),
+        String(r['SubCategory'] || '').trim()
+      ].filter(Boolean).join(' - ') || 'ไม่ระบุประเภท';
+
+      const detailMain = String(r['Detail']  || '').trim();
+      const comment    = String(r['Comment'] || '').trim();
+      const detailText = [detailMain, comment].filter(Boolean).join('\n\n');
+
+      const isClosed = !!closeStatus;
+
+      let statusDisplay = baseStatus || '-';
+      if (isClosed) {
+        statusDisplay = closeStatus || 'เสร็จสิ้น-ปิดเคส';
+      } else if (hrbpStatus) {
+        statusDisplay = hrbpStatus;
+      }
+
+      return {
+        id: caseId2,
+
+        date:        dateRaw,      // ใช้ sort
+        dateDisplay: dateDisplay,  // ใช้แสดง
+
+        employee:   empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
+        status:     statusDisplay,
+        baseStatus: baseStatus,
+        hrbpStatus: hrbpStatus,
+        isClosed:   isClosed,
+
+        closedAt:  closeAtDisplay, // ใช้แสดง
+        closedRaw: closeRaw,       // ใช้ sort
+
+        details:   detailText
+      };
+    });
+
+    // ส่งให้ฟังก์ชันแสดงผลของหน้า History
+    showSearchResults(mapped);
+
+  }catch(err){
+    console.error('loadHistoryCases error', err);
+    alert('เกิดข้อผิดพลาดในการโหลดรายการเคสของพนักงาน');
+  }
+}
 
 
 
