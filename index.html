@@ -1378,7 +1378,7 @@ const Comment = detailText;
   // จาก Step ที่เลือก
   const Category    = selectedCategoryTH || '';
   const SubCategory = selectedSubCategoryName || '';
-  const Detail      = selectedDetailName ? `${selectedDetailName} — ${detailText}` : detailText;
+  const Detail      = selectedDetailName || '';
 
   // ตรวจขนาดไฟล์รวม
   const total = Array.from(document.getElementById('incidentPhotos').files || [])
