@@ -594,10 +594,47 @@ input[type="time"]{
   </div>
 </div>
       <div id="searchResults" class="hidden max-w-4xl mx-auto">
-  <h3 class="text-xl font-bold text-gray-800 mb-3">ผลการค้นหา</h3>
+  <h3 class="text-xl font-bold text-gray-800 mb-2">ผลการค้นหา</h3>
+
+  <!-- ปุ่มกรองสถานะเคส -->
+  <div class="flex flex-wrap items-center gap-2 mb-3 text-xs sm:text-sm">
+    <span class="text-gray-600 mr-2">กรองตามสถานะ:</span>
+
+    <!-- ทั้งหมด (ค่าเริ่มต้น) -->
+    <button
+      type="button"
+      class="history-filter-btn px-3 py-1.5 rounded-full border border-gray-200 bg-blue-600 text-white font-medium"
+      data-history-filter="ALL">
+      ทั้งหมด
+    </button>
+
+    <!-- รอตรวจสอบ -->
+    <button
+      type="button"
+      class="history-filter-btn px-3 py-1.5 rounded-full border border-gray-200 bg-gray-100 text-gray-700 font-medium"
+      data-history-filter="รอตรวจสอบ">
+      รอตรวจสอบ
+    </button>
+
+    <!-- รอดำเนินการ -->
+    <button
+      type="button"
+      class="history-filter-btn px-3 py-1.5 rounded-full border border-gray-200 bg-gray-100 text-gray-700 font-medium"
+      data-history-filter="รอดำเนินการ">
+      รอดำเนินการ
+    </button>
+
+    <!-- ปิดเคส (จะไปแม็ปกับสถานะในชีต = เสร็จสิ้น) -->
+    <button
+      type="button"
+      class="history-filter-btn px-3 py-1.5 rounded-full border border-gray-200 bg-gray-100 text-gray-700 font-medium"
+      data-history-filter="ปิดเคส">
+      ปิดเคส
+    </button>
+  </div>
+
   <div id="resultsContainer" class="space-y-3"></div>
 </div>
-    </div>
   </section>
 
   <!-- Dashboard Page (static demo) -->
@@ -780,6 +817,10 @@ input[type="time"]{
     
     let historyEmp   = null;
     let historyCases = [];
+
+    // เก็บผลการค้นหาล่าสุดสำหรับใช้กับปุ่ม Filter
+    let historyCurrentRows   = [];
+    let historyFilterStatus  = 'ALL';  // ค่าเริ่มต้น = แสดงทั้งหมด
 
     let selectedSubCategoryName = '';
     let selectedDetailName = '';
@@ -1112,7 +1153,7 @@ async function verifyEmployee(e){
   const msg = (err && err.message) ? err.message : String(err);
   alert('อัปโหลดไม่สำเร็จ\n' + msg + '\n\n(ถ้าขึ้น AbortError ให้ลองใหม่/เน็ตช้า)');
 }
-  }
+  } 
 
     // ===== Category & Sub-category =====
        async function selectCategory(cat){
@@ -1318,7 +1359,7 @@ function toggleTimeEdit(){
         const step = document.getElementById(`step${currentStep}`);
         step.classList.remove('completed');
         step.classList.add('active');
-      }
+      } 
       document.getElementById(ids[currentStep-1]).classList.remove('hidden');
     }
 
@@ -1514,6 +1555,8 @@ function logoutHistory(){
   isHistoryLoggedIn = false;
   historyEmp = null;
   historyCases = [];
+  historyCurrentRows  = [];
+  historyFilterStatus = 'ALL';
 
   document.getElementById('historyLoginSection').classList.remove('hidden');
   document.getElementById('historyContent').classList.add('hidden');
@@ -1523,6 +1566,19 @@ function logoutHistory(){
   const wrap = document.getElementById('resultsContainer');
   if (box)  box.classList.add('hidden');
   if (wrap) wrap.innerHTML = '';
+
+  // รีเซ็ตสีปุ่ม filter ให้กลับมาที่ "ทั้งหมด"
+  const filterBtns = document.querySelectorAll('.history-filter-btn');
+  filterBtns.forEach(btn => {
+    const status = btn.getAttribute('data-history-filter') || 'ALL';
+    if (status === 'ALL') {
+      btn.classList.add('bg-blue-600','text-white');
+      btn.classList.remove('bg-gray-100','text-gray-700');
+    } else {
+      btn.classList.add('bg-gray-100','text-gray-700');
+      btn.classList.remove('bg-blue-600','text-white');
+    }
+  });
 }
     
     // โหลดรายการเคสของพนักงานจากชีต Response Form
@@ -1623,32 +1679,133 @@ async function loadHistoryCases(empId){
   showSearchResults(mapped);
 }
 
-    function showSearchResults(rows){
-      const wrap = document.getElementById('resultsContainer');
-      const box  = document.getElementById('searchResults');
-      wrap.innerHTML = '';
-      rows.forEach(r => {
-        const statusColor = r.status==='เสร็จสิ้น' ? 'green' : 'yellow';
-        const typeColor = r.type.includes('การเลิกจ้าง') ? 'red' : r.type.includes('อุบัติเหตุ') ? 'orange' : r.type.includes('ความปลอดภัย') ? 'yellow' : 'purple';
-        const card = document.createElement('div');
-        card.className = `bg-gradient-to-r from-${typeColor}-50 to-${typeColor}-100 rounded-xl p-6 border-l-4 border-${typeColor}-500`;
-        card.innerHTML = `
-          <div class="flex justify-between items-start">
-            <div>
-              <h4 class="text-lg font-bold text-gray-800 mb-2">${r.id} - ${r.type}</h4>
-              <p class="text-gray-600 mb-2">พนักงาน: ${r.employee} | วันที่: ${r.date}</p>
-              <p class="text-sm text-gray-500">${r.details}</p>
-            </div>
-            <div class="flex flex-col gap-2">
-              <span class="px-3 py-1 bg-${statusColor}-100 text-${statusColor}-800 text-sm rounded-full">${r.status}</span>
-              <button onclick="viewCaseHistory('${r.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">ดูรายละเอียด</button>
-              ${r.status!=='เสร็จสิ้น' ? `<button onclick=\"closeCaseByEmployee('${r.id}')\" class=\"px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm\">ปิดเคส</button>` : ''}
-            </div>
-          </div>`;
-        wrap.appendChild(card);
-      });
-      box.classList.remove('hidden');
+    function showSearchResults(rows) {
+  const wrap = document.getElementById('resultsContainer');
+  const box  = document.getElementById('searchResults');
+
+  // เก็บผลค้นหาล่าสุดไว้ใช้กับปุ่ม Filter
+  historyCurrentRows = rows || [];
+
+  wrap.innerHTML = '';
+
+  if (!historyCurrentRows || !historyCurrentRows.length) {
+    box.classList.add('hidden');
+    return;
+  }
+
+  // กรองตามสถานะที่เลือก
+  let rowsToRender = historyCurrentRows;
+
+  if (historyFilterStatus && historyFilterStatus !== 'ALL') {
+    rowsToRender = historyCurrentRows.filter(r => {
+      // ปุ่ม "ปิดเคส" = เคสที่สถานะในชีตเป็น "เสร็จสิ้น"
+      if (historyFilterStatus === 'ปิดเคส') {
+        return r.status === 'เสร็จสิ้น';
+      }
+      return r.status === historyFilterStatus;
+    });
+  }
+
+  if (!rowsToRender.length) {
+    box.classList.remove('hidden');
+    wrap.innerHTML = `
+      <p class="text-sm text-gray-500 mt-1">
+        ไม่พบเคสตามสถานะที่เลือก
+      </p>
+    `;
+    return;
+  }
+
+  rowsToRender.forEach(r => {
+
+    // -------------------------
+    // 1) เลือกสีพื้นหลังตามสถานะเคส
+    // -------------------------
+    let bgColorClass = '';
+
+    if (r.status === 'เสร็จสิ้น') {
+      bgColorClass = 'bg-green-50';       // เคสปิด → เขียวอ่อน
+    } else {
+      bgColorClass = 'bg-yellow-50';      // ยังไม่ปิด → เหลืองอ่อน
     }
+
+    // badge สถานะ
+    const statusColor = r.status === 'เสร็จสิ้น' ? 'green' : 'yellow';
+
+    // -------------------------
+    // 2) สร้างการ์ดเคส
+    // -------------------------
+    const card = document.createElement('div');
+    card.className = `${bgColorClass} rounded-xl p-4 sm:p-5 shadow-sm border border-gray-200`;
+
+    card.innerHTML = `
+      <div class="flex justify-between items-start gap-3">
+        <div>
+          <h4 class="text-base sm:text-lg font-bold text-gray-800 mb-1">
+            ${r.id} - ${r.type}
+          </h4>
+          <p class="text-gray-600 text-xs sm:text-sm mb-1">
+            พนักงาน: ${r.employeeName} (${r.employeeId})
+          </p>
+          <p class="text-gray-500 text-xs sm:text-sm">
+            วันที่: ${r.date}
+          </p>
+          <p class="text-gray-500 text-xs sm:text-sm mt-1">
+            ${r.details}
+          </p>
+        </div>
+
+        <div class="flex flex-col items-end gap-1.5">
+          <span class="px-2.5 py-1 bg-${statusColor}-100 text-${statusColor}-800 text-[11px] sm:text-xs rounded-full">
+            ${r.status}
+          </span>
+
+          <button
+            onclick="viewCaseHistory('${r.id}')"
+            class="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm">
+            ดูรายละเอียด
+          </button>
+
+          ${r.status !== 'เสร็จสิ้น'
+            ? `<button onclick="closeCaseByEmployee('${r.id}')"
+                 class="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs sm:text-sm">
+                 ปิดเคส
+               </button>`
+            : ''
+          }
+        </div>
+      </div>
+    `;
+
+    wrap.appendChild(card);
+  });
+
+ box.classList.remove('hidden');
+} 
+
+// Event สำหรับปุ่มกรองสถานะในหน้า History
+document.addEventListener('DOMContentLoaded', () => {
+  const filterBtns = document.querySelectorAll('.history-filter-btn');
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const status = btn.getAttribute('data-history-filter') || 'ALL';
+      historyFilterStatus = status;
+
+      // เปลี่ยนสีปุ่มให้ตัวที่เลือกเด่นขึ้น
+      filterBtns.forEach(b => {
+        b.classList.remove('bg-blue-600','text-white');
+        b.classList.add('bg-gray-100','text-gray-700');
+      });
+
+      btn.classList.add('bg-blue-600','text-white');
+      btn.classList.remove('bg-gray-100','text-gray-700');
+
+      // แสดงผลใหม่ตาม filter ที่เลือก
+      showSearchResults(historyCurrentRows);
+    });
+  });
+});
 
     function viewCaseHistory(id){ viewCase(id); }
     async function closeCaseByEmployee(id){
