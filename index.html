@@ -815,15 +815,11 @@ input[type="time"]{
     let isHRBPLoggedIn = false;
     let isHistoryLoggedIn = false;
     
-    let historyEmp   = null;
-    let historyCases = [];
+let historyEmp   = null;
+let historyCases = [];
 
-    // เก็บผลการค้นหาล่าสุดสำหรับใช้กับปุ่ม Filter
-    let historyCurrentRows   = [];
-    let historyFilterStatus  = 'ALL';  // ค่าเริ่มต้น = แสดงทั้งหมด
-
-    let selectedSubCategoryName = '';
-    let selectedDetailName = '';
+let historyCurrentRows  = [];
+let historyFilterStatus = 'ALL';
 
     // ===== Page router =====
     function showPage(page) {
@@ -1601,33 +1597,48 @@ async function loadHistoryCases(empId){
     historyCases = rs.rows || [];
 
     // map ให้เป็นรูปแบบที่ showSearchResults ใช้
-    const mapped = historyCases.map(r => {
-      const status   = String(r['Status'] || '').trim() || '-';
-      const caseId   = String(r['CaseId'] || '').trim();
-      const dateStr  = r['Timestamp'] ? String(r['Timestamp']) : '';
-      const empName  = String(r['EmpName'] || '').trim();
-      const empIdVal = String(r['EmpId']   || '').trim();
+const mapped = historyCases.map(r => {
+  const baseStatus   = String(r['Status'] || '').trim();          // จากคอลัมน์ S
+  const closeStatus  = String(r['Status-Close'] || '').trim();    // จากคอลัมน์ V
+  const closeAtStr   = r['Date-Close'] ? String(r['Date-Close']) : '';  // จากคอลัมน์ W
 
-      const typeText = [
-        String(r['Category']    || '').trim(),
-        String(r['SubCategory'] || '').trim()
-      ].filter(Boolean).join(' - ') || 'ไม่ระบุประเภท';
+  const caseId   = String(r['CaseId'] || '').trim();
+  const dateStr  = r['Timestamp'] ? String(r['Timestamp']) : '';
+  const empName  = String(r['EmpName'] || '').trim();
+  const empIdVal = String(r['EmpId']   || '').trim();
 
-      const detailText =
-        String(r['Detail']  || '').trim() ||
-        String(r['Comment'] || '').trim() || '';
+  const typeText = [
+    String(r['Category']    || '').trim(),
+    String(r['SubCategory'] || '').trim()
+  ].filter(Boolean).join(' - ') || 'ไม่ระบุประเภท';
 
-      return {
-        id:       caseId,
-        type:     typeText,
-        date:     dateStr,
-        employee: empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
-        status:   status,
-        details:  detailText
-      };
-    });
+  const detailText =
+    String(r['Detail']  || '').trim() ||
+    String(r['Comment'] || '').trim() || '';
 
-    showSearchResults(mapped);
+  // ถ้ามีค่าใน Status-Close แสดงว่าเคสถูกปิดแล้ว
+  const isClosed = !!closeStatus;
+
+  // เอาไว้แสดงใน badge บนการ์ด
+  let statusDisplay = baseStatus || '-';
+  if (isClosed) {
+    // ถ้าคุณอยากโชว์ข้อความจาก V เช่น "เสร็จสิ้น-ปิดเคส"
+    statusDisplay = closeStatus || 'เสร็จสิ้น-ปิดเคส';
+  }
+
+  return {
+    id:       caseId,
+    type:     typeText,
+    date:     dateStr,
+    employee: empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
+    status:   statusDisplay,
+    isClosed: isClosed,      // ใช้ช่วย filter และซ่อนปุ่มปิดเคส
+    closedAt: closeAtStr,    // เผื่ออยากเอาไปแสดงในอนาคต
+    details:  detailText
+  };
+});
+
+showSearchResults(mapped);
 
   }catch(err){
     console.error(err);
@@ -1688,10 +1699,11 @@ async function loadHistoryCases(empId){
 }
 
     function showSearchResults(rows) {
+
   const wrap = document.getElementById('resultsContainer');
   const box  = document.getElementById('searchResults');
 
-  // เก็บผลค้นหาล่าสุดไว้ใช้กับปุ่ม Filter
+  // เก็บ rows ล่าสุดไว้ใช้ตอนกดปุ่ม Filter
   historyCurrentRows = rows || [];
 
   wrap.innerHTML = '';
@@ -1701,16 +1713,27 @@ async function loadHistoryCases(empId){
     return;
   }
 
-  // กรองตามสถานะที่เลือก
+  // ---------- กรองตามปุ่มที่เลือก ----------
   let rowsToRender = historyCurrentRows;
 
   if (historyFilterStatus && historyFilterStatus !== 'ALL') {
     rowsToRender = historyCurrentRows.filter(r => {
-      // ปุ่ม "ปิดเคส" = เคสที่สถานะในชีตเป็น "เสร็จสิ้น"
+
       if (historyFilterStatus === 'ปิดเคส') {
-        return r.status === 'เสร็จสิ้น';
+        // ปุ่มนี้ให้ดูจากคอลัมน์ V (isClosed = true)
+        return !!r.isClosed;
       }
-      return r.status === historyFilterStatus;
+
+      if (historyFilterStatus === 'รอตรวจสอบ') {
+        return !r.isClosed && r.status.includes('รอตรวจสอบ');
+      }
+
+      if (historyFilterStatus === 'รอดำเนินการ') {
+        // ในอนาคตสามารถปรับ logic ให้ผูกกับ Status-HRBP ได้
+        return !r.isClosed && r.status.includes('รอดำเนินการ');
+      }
+
+      return true;
     });
   }
 
@@ -1724,25 +1747,61 @@ async function loadHistoryCases(empId){
     return;
   }
 
-  rowsToRender.forEach(r => {
+  // ---------- จัดเรียง (Sort) ----------
+  // ฟังก์ชันช่วยแปลง string วันที่ → เวลา (ms)
+  const parseTime = (val) => {
+    if (!val) return 0;
+    // พยายามแปลง "yyyy-MM-dd HH:mm:ss" หรือ format ใกล้เคียง
+    const iso = String(val).replace(' ', 'T');
+    const t = Date.parse(iso);
+    return isNaN(t) ? 0 : t;
+  };
 
-    // -------------------------
-    // 1) เลือกสีพื้นหลังตามสถานะเคส
-    // -------------------------
-    let bgColorClass = '';
+  rowsToRender = [...rowsToRender].sort((a, b) => {
 
-    if (r.status === 'เสร็จสิ้น') {
-      bgColorClass = 'bg-green-50';       // เคสปิด → เขียวอ่อน
-    } else {
-      bgColorClass = 'bg-yellow-50';      // ยังไม่ปิด → เหลืองอ่อน
+    const aClosed = !!a.isClosed;
+    const bClosed = !!b.isClosed;
+
+    // 1) ถ้าเป็นปุ่ม "ทั้งหมด" → เคสเปิดอยู่ (isClosed=false) ขึ้นก่อน, เคสปิดลงล่างสุด
+    if (historyFilterStatus === 'ALL') {
+      if (aClosed !== bClosed) {
+        // aClosed = true → ไปหลัง, false → อยู่ก่อน
+        return aClosed ? 1 : -1;
+      }
     }
 
-    // badge สถานะ
-    const statusColor = r.status === 'เสร็จสิ้น' ? 'green' : 'yellow';
+    // 2) จัดเรียงตามเวลาใหม่สุด → เก่าสุด
+    //    - ถ้าเป็นปุ่ม "ปิดเคส" ให้ดูจากเวลาปิดเคส (closedAt) ก่อน
+    //    - กรณีอื่น ๆ ใช้ Timestamp เดิม (field: date)
+    const aKey = (historyFilterStatus === 'ปิดเคส' && a.closedAt) ? a.closedAt : a.date;
+    const bKey = (historyFilterStatus === 'ปิดเคส' && b.closedAt) ? b.closedAt : b.date;
 
-    // -------------------------
-    // 2) สร้างการ์ดเคส
-    // -------------------------
+    const tA = parseTime(aKey);
+    const tB = parseTime(bKey);
+
+    // ใหม่สุดมาก่อน → sort จากมาก → น้อย
+    return tB - tA;
+  });
+
+  // ---------- วาดการ์ด ----------
+ rowsToRender.forEach(r => {
+
+    // กำหนดโทนสีตามสถานะ
+    //  - รอตรวจสอบ      → เหลือง
+    //  - รอดำเนินการ    → ส้ม
+    //  - ปิดเคส / เสร็จสิ้น → เขียว
+    let tone = 'yellow'; // ค่าเริ่มต้น = เหลือง (รอตรวจสอบ)
+
+    if (r.isClosed) {
+      tone = 'green';
+    } else if (r.status && r.status.includes('รอดำเนินการ')) {
+      tone = 'orange';
+    }
+
+    // ใช้สีอ่อนมาก (50) กับพื้นหลังการ์ด และใช้ 50 + text-700 กับ badge ให้ดูซอฟท์
+    const bgColorClass = `bg-${tone}-50`;
+    const statusColor  = tone;
+
     const card = document.createElement('div');
     card.className = `${bgColorClass} rounded-xl p-4 sm:p-5 shadow-sm border border-gray-200`;
 
@@ -1753,18 +1812,24 @@ async function loadHistoryCases(empId){
             ${r.id} - ${r.type}
           </h4>
           <p class="text-gray-600 text-xs sm:text-sm mb-1">
-            พนักงาน: ${r.employeeName} (${r.employeeId})
+            พนักงาน: ${r.employee || '-'}
           </p>
           <p class="text-gray-500 text-xs sm:text-sm">
-            วันที่: ${r.date}
+            วันที่: ${r.date || '-'}
           </p>
           <p class="text-gray-500 text-xs sm:text-sm mt-1">
-            ${r.details}
+            ${r.details || ''}
           </p>
+          ${r.isClosed && r.closedAt
+            ? `<p class="text-[11px] sm:text-xs text-gray-400 mt-1">
+                 ปิดเคสเมื่อ: ${r.closedAt}
+               </p>`
+            : ''
+          }
         </div>
 
         <div class="flex flex-col items-end gap-1.5">
-          <span class="px-2.5 py-1 bg-${statusColor}-100 text-${statusColor}-800 text-[11px] sm:text-xs rounded-full">
+          <span class="px-2.5 py-1 bg-${statusColor}-50 text-${statusColor}-700 text-[11px] sm:text-xs rounded-full">
             ${r.status}
           </span>
 
@@ -1774,7 +1839,7 @@ async function loadHistoryCases(empId){
             ดูรายละเอียด
           </button>
 
-          ${r.status !== 'เสร็จสิ้น'
+          ${!r.isClosed
             ? `<button onclick="closeCaseByEmployee('${r.id}')"
                  class="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs sm:text-sm">
                  ปิดเคส
@@ -1786,10 +1851,10 @@ async function loadHistoryCases(empId){
     `;
 
     wrap.appendChild(card);
-  });
+});
 
- box.classList.remove('hidden');
-} 
+  box.classList.remove('hidden');
+}
 
 // Event สำหรับปุ่มกรองสถานะในหน้า History
 document.addEventListener('DOMContentLoaded', () => {
