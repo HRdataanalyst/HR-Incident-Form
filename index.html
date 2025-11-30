@@ -421,61 +421,55 @@ input[type="time"]{
 
   <!-- Format + Location -->
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  
   <!-- Format -->
-  <div class="relative">
-    <label class="block text-gray-700 font-semibold mb-1 text-xs">Format</label>
-    <input
-  type="text"
-  id="locationFormat"
-  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-  placeholder="เช่น ชั้น/อาคาร/โซนผลิต"
-  autocomplete="off"
-  oninput="typeaheadFormat(this.value)"
-  onclick="toggleFormatDropdown(true)"
-/>
-    <!-- ▼ ปุ่ม Format -->
-<button
-  id="formatToggleBtn"
-  type="button"
-  class="absolute right-2 top-8 px-2 py-1 text-xs border rounded hover:bg-gray-50"
-  onclick="event.stopPropagation(); toggleFormatDropdown(true)"
-  aria-label="แสดงรายการ Format"
->▼</button>
+<div class="relative">
+  <label class="block text-gray-700 font-semibold mb-1 text-xs">Format</label>
+  <input
+    type="text"
+    id="locationFormat"
+    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+    placeholder="เช่น ชั้น/อาคาร/โซนผลิต"
+    autocomplete="off"
+    oninput="typeaheadFormat(this.value)"
+    onclick="toggleFormatDropdown(true)"
+  />
+  <!-- ▼ ปุ่ม Format -->
+  <button
+    id="formatToggleBtn"
+    type="button"
+    class="absolute right-2 top-8 px-2 py-1 text-xs border rounded hover:bg-gray-50"
+    onclick="event.stopPropagation(); toggleFormatDropdown(true)"
+    aria-label="แสดงรายการ Format"
+  >▼</button>
 
-<!-- ▼ ปุ่ม Location -->
-<button
-  id="locationToggleBtn"
-  type="button"
-  class="absolute right-2 top-8 px-2 py-1 text-xs border rounded hover:bg-gray-50"
-  onclick="event.stopPropagation(); toggleLocationDropdown(true)"
-  aria-label="แสดงรายการ Location"
->▼</button>
-    
-    <div id="formatDropdown"
-         class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
-  </div>
+  <div id="formatDropdown"
+       class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
+</div>
 
   <!-- Location -->
-  <div class="relative">
-    <label class="block text-gray-700 font-semibold mb-1 text-xs">Location</label>
-    <input
-  type="text"
-  id="locationInput"
-  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-  placeholder="พิมพ์เพื่อค้นหาสถานที่..."
-  autocomplete="off"
-  oninput="typeaheadLocation(this.value)"
-  onclick="toggleLocationDropdown(true)"
-/>
-    <button
-      type="button"
-      class="absolute right-2 top-8 px-2 py-1 text-xs border rounded hover:bg-gray-50"
-      onclick="toggleLocationDropdown(true)"
-      aria-label="แสดงรายการ Location"
-    >▼</button>
-    <div id="locationDropdown"
-         class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
-  </div>
+<div class="relative">
+  <label class="block text-gray-700 font-semibold mb-1 text-xs">Location</label>
+  <input
+    type="text"
+    id="locationInput"
+    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+    placeholder="พิมพ์เพื่อค้นหาสถานที่..."
+    autocomplete="off"
+    oninput="typeaheadLocation(this.value)"
+    onclick="toggleLocationDropdown(true)"
+  />
+  <button
+    id="locationToggleBtn"
+    type="button"
+    class="absolute right-2 top-8 px-2 py-1 text-xs border rounded hover:bg-gray-50"
+    onclick="event.stopPropagation(); toggleLocationDropdown(true)"
+    aria-label="แสดงรายการ Location"
+  >▼</button>
+  <div id="locationDropdown"
+       class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
+</div>
+
 </div>
 
     <!-- ผู้เกี่ยวข้อง (เหมือนเดิม) -->
@@ -1536,41 +1530,86 @@ const Comment = detailText;
     }
     function closeCaseModal(){ document.getElementById('caseModal').classList.add('hidden'); }
 
-    /** ---------- สถานที่เกิดเหตุ: โหลดจากชีต + แคช --------- */
-let _LOCATIONS = null; // แคชในหน้านี้
+    /** ---------- สถานที่เกิดเหตุ: โหลดจากชีต + แคช (Format + Location) --------- */
+
+let _LOCATION_ROWS = null; // [{ format, location }]
+
 async function ensureLocations(){
-  if (Array.isArray(_LOCATIONS)) return _LOCATIONS;
+  if (Array.isArray(_LOCATION_ROWS)) return _LOCATION_ROWS;
+
   try{
     const rs = await apiGet({ action:'locations' });
-    _LOCATIONS = (rs.ok ? rs.rows : []) || [];
-  }catch{ _LOCATIONS = []; }
-  return _LOCATIONS;
+    _LOCATION_ROWS = (rs.ok ? rs.rows : []) || [];
+  }catch{
+    _LOCATION_ROWS = [];
+  }
+  return _LOCATION_ROWS;
 }
 
 let _locDebounce = 0;
+
 async function typeaheadLocation(q){
   const dropdown = document.getElementById('locationDropdown');
   const input    = document.getElementById('locationInput');
+  const fmtInput = document.getElementById('locationFormat');
 
   clearTimeout(_locDebounce);
   _locDebounce = setTimeout(async () => {
-    if (!q) { dropdown.classList.add('hidden'); return; }
+    const currentFmt = (fmtInput && fmtInput.value ? fmtInput.value.trim().toLowerCase() : '');
 
-    const items = await ensureLocations();
-    const list = items
-      .filter(v => v.toLowerCase().includes(q.toLowerCase()))
-      .slice(0, 50);
+    // ถ้าไม่มีทั้งข้อความค้นหาและยังไม่ได้เลือก Format เลย → ไม่ต้องโชว์
+    if (!q && !currentFmt){
+      dropdown.classList.add('hidden');
+      return;
+    }
 
-    if (list.length === 0){ dropdown.classList.add('hidden'); return; }
+    const items = await ensureLocations(); // [{format, location}]
+    let list = items;
+
+    // ถ้าเลือก Format แล้ว → กรองเฉพาะ Location ใน Format นั้น
+    if (currentFmt){
+      list = list.filter(row =>
+        String(row.format || '').trim().toLowerCase() === currentFmt
+      );
+    }
+
+    if (q){
+      const qLower = q.toLowerCase();
+      list = list.filter(row =>
+        String(row.location || '').toLowerCase().includes(qLower)
+      );
+    }
+
+    list = list.slice(0, 50);
+
+    if (!list.length){
+      dropdown.classList.add('hidden');
+      return;
+    }
 
     dropdown.innerHTML = '';
-    list.forEach(loc => {
+    list.forEach(row => {
+      const loc = row.location || '';
+      const fmt = row.format || '';
+
       const div = document.createElement('div');
-      div.className = 'px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0';
-      div.textContent = loc;
-      div.onclick = () => { input.value = loc; dropdown.classList.add('hidden'); };
+      div.className =
+        'px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0';
+      // แสดง Format กำกับเล็กน้อยให้ผู้ใช้เห็น context
+      div.textContent = fmt ? `${loc} (${fmt})` : loc;
+
+      div.onclick = () => {
+        input.value = loc;
+        // ถ้ายังไม่กรอก Format → เติม Format ตาม Location ที่เลือก
+        if (fmtInput && !fmtInput.value.trim()){
+          fmtInput.value = fmt;
+        }
+        dropdown.classList.add('hidden');
+      };
+
       dropdown.appendChild(div);
     });
+
     dropdown.classList.remove('hidden');
   }, 150);
 }
@@ -1666,24 +1705,57 @@ async function toggleFormatDropdown(forceOpen){
     async function toggleLocationDropdown(forceOpen){
   const dropdown = document.getElementById('locationDropdown');
   const input    = document.getElementById('locationInput');
+  const fmtInput = document.getElementById('locationFormat');
 
   const shouldOpen = (typeof forceOpen === 'boolean')
     ? forceOpen
     : dropdown.classList.contains('hidden');
 
-  if (!shouldOpen){ dropdown.classList.add('hidden'); return; }
+  if (!shouldOpen){
+    dropdown.classList.add('hidden');
+    return;
+  }
 
-  const items = await ensureLocations();
-  const list = items.slice(0, 100);
+  const items = await ensureLocations(); // [{format, location}]
+  const currentFmt = (fmtInput && fmtInput.value ? fmtInput.value.trim().toLowerCase() : '');
+
+  let list = items;
+
+  // ถ้ามี Format ที่เลือกอยู่แล้ว → แสดงเฉพาะ Location ใน Format นั้น
+  if (currentFmt){
+    list = list.filter(row =>
+      String(row.format || '').trim().toLowerCase() === currentFmt
+    );
+  }
+
+  list = list.slice(0, 100);
+
+  if (!list.length){
+    dropdown.classList.add('hidden');
+    return;
+  }
 
   dropdown.innerHTML = '';
-  list.forEach(loc => {
+  list.forEach(row => {
+    const loc = row.location || '';
+    const fmt = row.format || '';
+
     const div = document.createElement('div');
-    div.className = 'px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0';
-    div.textContent = loc;
-    div.onclick = () => { input.value = loc; dropdown.classList.add('hidden'); };
+    div.className =
+      'px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0';
+    div.textContent = fmt ? `${loc} (${fmt})` : loc;
+
+    div.onclick = () => {
+      input.value = loc;
+      if (fmtInput && !fmtInput.value.trim()){
+        fmtInput.value = fmt;
+      }
+      dropdown.classList.add('hidden');
+    };
+
     dropdown.appendChild(div);
   });
+
   dropdown.classList.remove('hidden');
 }
 
