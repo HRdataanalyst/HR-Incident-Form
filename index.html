@@ -536,6 +536,8 @@ input[type="time"]{
     </button>
   </div>
 </section>
+    
+    </main>
 
   <!-- History Page -->
   <section id="historyPage" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1391,8 +1393,6 @@ const Comment = detailText;
   try{
     showLoading('กำลังอัปโหลดไฟล์และสร้างเคส...');
     const Images = await collectImagesFromInput();
-
-    const Comment     = detailText;
 
     const payload = {
       action: 'create',
