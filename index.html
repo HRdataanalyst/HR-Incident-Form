@@ -805,6 +805,27 @@ input[type="time"]{
     return await res2.json();
   }
 }
+    
+     // 🔹 ฟังก์ชันแปลงวันที่ ISO → วัน/เดือน/ปี เวลา (เวลาไทย)
+    function formatDateTime(isoString) {
+      if (!isoString) return '';
+      const date = new Date(isoString);
+      if (isNaN(date)) return isoString; // กันกรณีแปลงวันที่ไม่ได้
+
+      const options = {
+        timeZone: 'Asia/Bangkok',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      };
+
+      const formatted = date.toLocaleString('th-TH', options);
+      // "30/11/2025, 11:20" → "30/11/2025 เวลา 11:20"
+      return formatted.replace(',', ' เวลา');
+    }
+    
     // ===== Global state =====
     let currentStep = 1;
     let selectedCategory = '';
@@ -1644,10 +1665,20 @@ async function loadHistoryCases(empId){
 
       // V/W = ปิดเคส
       const closeStatus = String(r['Status-Close'] || '').trim();
-      const closeAtStr  = r['Date-Close'] ? String(r['Date-Close']) : '';
+      const closeRaw    = r['Date-Close'] ? String(r['Date-Close']) : '';
+      const closeAtDisplay = closeRaw ? formatDateTime(closeRaw) : '';
 
       const caseId   = String(r['CaseId'] || '').trim();
-      const dateStr  = r['Timestamp'] ? String(r['Timestamp']) : '';
+
+      // 🔹 Timestamp ดิบจากชีต
+      const rawTimestamp = r['Timestamp'] ? String(r['Timestamp']) : '';
+
+      // 🔹 สำหรับใช้เรียงลำดับ (sort) → เก็บแบบดิบ
+      const dateRaw = rawTimestamp;
+
+      // 🔹 สำหรับโชว์บนหน้าจอ → แปลงด้วย formatDateTime()
+      const dateDisplay = rawTimestamp ? formatDateTime(rawTimestamp) : '';
+      
       const empName  = String(r['EmpName'] || '').trim();
       const empIdVal = String(r['EmpId']   || '').trim();
 
@@ -1673,16 +1704,26 @@ async function loadHistoryCases(empId){
         statusDisplay = hrbpStatus;
       }
 
-      return {
+       return {
         id:         caseId,
         type:       typeText,
-        date:       dateStr,
+
+        // สำหรับใช้งานทั่วไป (เดิม)
+        date:       dateRaw,
+
+        // สำหรับแสดงผลสวย ๆ
+        dateDisplay:    dateDisplay,
+
         employee:   empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
-        status:     statusDisplay, // เอาไว้แสดงบนป้ายสถานะ
-        baseStatus: baseStatus,    // S
-        hrbpStatus: hrbpStatus,    // T
-        isClosed:   isClosed,      // ใช้ช่วย filter และซ่อนปุ่มปิดเคส
-        closedAt:   closeAtStr,    // วันที่ปิดเคส
+        status:     statusDisplay,
+        baseStatus: baseStatus,
+        hrbpStatus: hrbpStatus,
+        isClosed:   isClosed,
+
+        // ปิดเคส
+        closedAt:       closeAtDisplay, // เอาไว้แสดง
+        closedRaw:      closeRaw,       // เอาไว้ sort
+
         details:    detailText
       };
 
@@ -1722,11 +1763,16 @@ async function loadHistoryCases(empId){
   const mapped = target.map(r => {
     const baseStatus  = String(r['Status'] || '').trim();          // S
     const hrbpStatus  = String(r['Status-HRBP'] || '').trim();     // T
-    const closeStatus = String(r['Status-Close'] || '').trim();    // V
-    const closeAtStr  = r['Date-Close'] ? String(r['Date-Close']) : ''; // W
+    const closeStatus = String(r['Status-Close'] || '').trim();
+    const closeRaw    = r['Date-Close'] ? String(r['Date-Close']) : '';
+    const closeAtDisplay = closeRaw ? formatDateTime(closeRaw) : '';
 
     const caseId2  = String(r['CaseId'] || '').trim();
-    const dateStr  = r['Timestamp'] ? String(r['Timestamp']) : '';
+
+    const rawTimestamp = r['Timestamp'] ? String(r['Timestamp']) : '';
+    const dateRaw      = rawTimestamp;
+    const dateDisplay  = rawTimestamp ? formatDateTime(rawTimestamp) : '';
+    
     const empName  = String(r['EmpName'] || '').trim();
     const empIdVal = String(r['EmpId']   || '').trim();
 
@@ -1751,13 +1797,19 @@ async function loadHistoryCases(empId){
     return {
       id:         caseId2,
       type:       typeText,
-      date:       dateStr,
+
+      date:          dateRaw,       // ใช้ sort
+      dateDisplay:   dateDisplay,   // ใช้แสดง
+
       employee:   empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
       status:     statusDisplay,
       baseStatus: baseStatus,
       hrbpStatus: hrbpStatus,
       isClosed:   isClosed,
-      closedAt:   closeAtStr,
+
+      closedAt:      closeAtDisplay, // แสดงผล
+      closedRaw:     closeRaw,       // sort
+
       details:    detailText
     };
   });
@@ -1831,27 +1883,27 @@ async function loadHistoryCases(empId){
     const aClosed = !!a.isClosed;
     const bClosed = !!b.isClosed;
 
-    // 1) ถ้าเป็นปุ่ม "ทั้งหมด" → เคสเปิดอยู่ (isClosed=false) ขึ้นก่อน, เคสปิดลงล่างสุด
+    // เคสเปิดอยู่ขึ้นก่อน ถ้า filter = ALL
     if (historyFilterStatus === 'ALL') {
       if (aClosed !== bClosed) {
-        // aClosed = true → ไปหลัง, false → อยู่ก่อน
         return aClosed ? 1 : -1;
       }
     }
 
-    // 2) จัดเรียงตามเวลาใหม่สุด → เก่าสุด
-    //    - ถ้าเป็นปุ่ม "ปิดเคส" ให้ดูจากเวลาปิดเคส (closedAt) ก่อน
-    //    - กรณีอื่น ๆ ใช้ Timestamp เดิม (field: date)
-    const aKey = (historyFilterStatus === 'ปิดเคส' && a.closedAt) ? a.closedAt : a.date;
-    const bKey = (historyFilterStatus === 'ปิดเคส' && b.closedAt) ? b.closedAt : b.date;
+    // ใช้ raw time ในการ sort เพื่อไม่ให้ format ภาษาไทยทำให้ parseTime พัง
+    const aKey = (historyFilterStatus === 'ปิดเคส' && a.closedRaw)
+      ? a.closedRaw
+      : (a.dateRaw || a.date);
+
+    const bKey = (historyFilterStatus === 'ปิดเคส' && b.closedRaw)
+      ? b.closedRaw
+      : (b.dateRaw || b.date);
 
     const tA = parseTime(aKey);
     const tB = parseTime(bKey);
 
-    // ใหม่สุดมาก่อน → sort จากมาก → น้อย
-    return tB - tA;
+    return tB - tA; // ใหม่สุดมาก่อน
   });
-
   // ---------- วาดการ์ด ----------
  rowsToRender.forEach(r => {
 
@@ -1884,14 +1936,14 @@ async function loadHistoryCases(empId){
             พนักงาน: ${r.employee || '-'}
           </p>
           <p class="text-gray-500 text-xs sm:text-sm">
-            วันที่: ${r.date || '-'}
+            วันที่: ${r.dateDisplay || r.date || '-'}
           </p>
           <p class="text-gray-500 text-xs sm:text-sm mt-1">
             ${r.details || ''}
           </p>
-          ${r.isClosed && r.closedAt
+          ${r.isClosed && (r.closedAt || r.closedRaw)
             ? `<p class="text-[11px] sm:text-xs text-gray-400 mt-1">
-                 ปิดเคสเมื่อ: ${r.closedAt}
+                 ปิดเคสเมื่อ: ${r.closedAt || (r.closedRaw ? formatDateTime(r.closedRaw) : '')}
                </p>`
             : ''
           }
@@ -2036,19 +2088,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const status   = String(row['Status']   || '').trim() || '-';
   const location = String(row['Location'] || '').trim();
-  const ts       = row['Timestamp'];
+ const ts       = row['Timestamp'];
 
   let dateText = '';
   let timeText = '';
-  if (ts){
-    const s = String(ts);
-    const parts = s.split(' ');
-    if (parts.length >= 2){
-      dateText = parts[0];
-      timeText = parts[1];
-    } else {
-      dateText = s;
-    }
+
+  if (ts) {
+    // ใช้รูปแบบเดียวกับหน้า list
+    const formatted = formatDateTime(String(ts));
+    dateText = formatted;   // เอาไปแสดงรวมเป็น "วันที่และเวลา"
   }
 
   const empName  = String(row['EmpName'] || '').trim();
@@ -2067,8 +2115,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div><strong>สถานะ:</strong> ${status}</div>
       <div><strong>ประเภท:</strong> ${typeText || '-'}</div>
       <div><strong>สถานที่:</strong> ${location || '-'}</div>
-      <div><strong>วันที่:</strong> ${dateText || '-'}</div>
-      <div><strong>เวลา:</strong> ${timeText || '-'}</div>
+      <div><strong>วันที่และเวลา:</strong> ${dateText || '-'}</div>
       <div><strong>ผู้แจ้ง:</strong> ${reporter || '-'}</div>
     </div>
     <div class="mt-4">
