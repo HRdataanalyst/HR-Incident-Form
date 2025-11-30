@@ -1797,6 +1797,49 @@ async function loadHRBPCases(hrbpId) {
   }
 }
     
+    // ✅ HRBP กด "ยืนยันการแจ้งเหตุ" สำหรับเคสที่อยู่ในสถานะ "รอตรวจสอบ"
+async function confirmHRBPCase(caseId) {
+  if (!currentHRBP || !currentHRBP.id) {
+    alert('กรุณาเข้าสู่ระบบ HRBP อีกครั้ง');
+    return;
+  }
+
+  if (!caseId) {
+    alert('ไม่พบรหัสเคส');
+    return;
+  }
+
+  const ok = confirm(`คุณต้องการยืนยันการแจ้งเหตุของเคส ${caseId} ใช่หรือไม่?`);
+  if (!ok) return;
+
+  try {
+    showLoading('กำลังอัปเดตสถานะเคส...');
+
+    const res = await apiPost({
+      action: 'hrbp-confirm',
+      CaseId: caseId,
+      HRBPId: currentHRBP.id
+    });
+
+    hideLoading();
+
+    if (!res.ok) {
+      alert(res.error || 'อัปเดตสถานะไม่สำเร็จ');
+      return;
+    }
+
+    alert('ยืนยันการแจ้งเหตุเรียบร้อยแล้ว');
+
+    // โหลดรายการเคสของ HRBP คนนี้ใหม่ เพื่ออัปเดตปุ่ม/สถานะบนหน้าจอ
+    await loadHRBPCases(currentHRBP.id);
+
+  } catch (err) {
+    hideLoading();
+    alert('เกิดข้อผิดพลาดในการอัปเดตสถานะเคส\n' + (err.message || err));
+  }
+}
+
+    
     function showHRBPCases(rows) {
   const box = document.getElementById('hrbpCasesContainer');
   if (!box) return;
@@ -1863,6 +1906,19 @@ async function loadHRBPCases(hrbpId) {
     const card = document.createElement('div');
     card.className = `rounded-2xl border border-gray-200 bg-${tone}-50/60 p-4 sm:p-5 shadow-sm`;
 
+    // ✅ ตัดสินใจว่าจะใช้ปุ่มอะไร
+    let actionLabel  = 'ดูรายละเอียด';
+    let actionClass  = 'bg-blue-600 hover:bg-blue-700';
+    let actionOnClick = `viewCase('${caseId}')`;
+
+    // เงื่อนไข "รอตรวจสอบ" → แสดงปุ่มยืนยันการแจ้งเหตุ
+    // ใช้สถานะหลัก (Status) ที่ยังเป็น "รอตรวจสอบ" และยังไม่มี Status-HRBP และยังไม่ปิดเคส
+    if (!isClosed && !hrbpStatus && baseStatus.includes('รอตรวจสอบ')) {
+      actionLabel   = 'ยืนยันการแจ้งเหตุ';
+      actionClass   = 'bg-green-600 hover:bg-green-700';
+      actionOnClick = `confirmHRBPCase('${caseId}')`;
+    }
+
     card.innerHTML = `
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
@@ -1898,9 +1954,9 @@ async function loadHRBPCases(hrbpId) {
             ${displayStatus}
           </span>
           <button type="button"
-                  class="px-3 py-1.5 text-xs sm:text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700"
-                  onclick="viewCase('${caseId}')">
-            ดูรายละเอียด
+                  class="px-3 py-1.5 text-xs sm:text-sm rounded-md text-white ${actionClass}"
+                  onclick="${actionOnClick}">
+            ${actionLabel}
           </button>
         </div>
       </div>
