@@ -724,10 +724,10 @@ input[type="time"]{
       </div>
       <div class="flex gap-2">
         <button type="button"
-                class="px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                onclick="openHRBP()">
-          🔄 โหลดข้อมูลล่าสุด
-        </button>
+        class="px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+        onclick="resetHRBPPage()">
+  🔄 โหลดข้อมูลล่าสุด
+</button>
         <button type="button"
                 class="px-3 py-2 text-xs sm:text-sm rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
                 onclick="logoutHRBP()">
@@ -1796,6 +1796,30 @@ async function loadHRBPCases(hrbpId) {
     alert('เกิดข้อผิดพลาดในการโหลดรายการเคสของ HRBP');
   }
 }
+    // ✅ รีเซ็ตหน้า HRBP Monitor และโหลดข้อมูลล่าสุดเฉพาะ HRBP ที่ล็อกอินอยู่
+async function resetHRBPPage() {
+  // ถ้ายังไม่ได้ล็อกอิน HRBP → ให้เด้ง modal ให้กรอกรหัสก่อน
+  if (!currentHRBP || !currentHRBP.id) {
+    showHRBPLogin();
+    return;
+  }
+
+  // เคลียร์กล่องแสดงเคส HRBP (เฉพาะหน้า HRBP)
+  const box = document.getElementById('hrbpCasesContainer');
+  if (box) {
+    box.innerHTML = '';
+  }
+
+  // เลื่อนขึ้นบนสุดของหน้า HRBP (ถ้าต้องการ)
+  const hrbpSection = document.getElementById('hrbpPage');
+  if (hrbpSection && hrbpSection.scrollIntoView) {
+    hrbpSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // โหลดรายการเคสของ HRBP คนนี้ใหม่จาก Google Script
+  await loadHRBPCases(currentHRBP.id);
+}
+
     
     // ✅ HRBP กด "ยืนยันการแจ้งเหตุ" สำหรับเคสที่อยู่ในสถานะ "รอตรวจสอบ"
 async function confirmHRBPCase(caseId) {
@@ -2302,12 +2326,12 @@ document.addEventListener('DOMContentLoaded', () => {
     );
   }
 
-  // 2) ถ้าไม่เจอ ลองถาม Apps Script ด้วย action=getbyid (ถ้าคุณมี endpoint นี้)
+  // 2) ถ้าไม่เจอ ลองถาม Apps Script ด้วย action=getbyid (ให้ใช้ rs.data ให้ตรงกับฝั่ง Apps Script)
   if (!row){
     try{
       const rs = await apiGet({ action:'getbyid', caseId: id });
-      if (rs.ok && rs.obj){
-        row = rs.obj;
+      if (rs.ok && rs.data){
+        row = rs.data;   // ← เปลี่ยนจาก rs.obj เป็น rs.data
       }
     }catch(err){
       console.error(err);
