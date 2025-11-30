@@ -795,6 +795,9 @@ input[type="time"]{
     let currentPage = 'report';
     let isHRBPLoggedIn = false;
     let isHistoryLoggedIn = false;
+    
+    let historyEmp   = null;
+    let historyCases = [];
 
     let selectedSubCategoryName = '';
     let selectedDetailName = '';
@@ -1489,33 +1492,154 @@ const Comment = detailText;
 
     function viewFactoryDetails(factoryId){ showHRBPLogin(); window.selectedFactory=factoryId; }
 
-    // ===== History (demo) =====
-    function verifyHistoryAccess(e){
-      e.preventDefault();
-      const id = document.getElementById('historyEmployeeId').value.trim();
-      if(id==='1234'){
-        isHistoryLoggedIn = true;
-        document.getElementById('historyLoginSection').classList.add('hidden');
-        document.getElementById('historyContent').classList.remove('hidden');
-      } else alert('รหัสพนักงานไม่ถูกต้อง กรุณาลองใหม่');
-    }
-    function logoutHistory(){
-      isHistoryLoggedIn = false;
-      document.getElementById('historyLoginSection').classList.remove('hidden');
-      document.getElementById('historyContent').classList.add('hidden');
-      document.getElementById('historyEmployeeId').value = '';
-      document.getElementById('searchResults').classList.add('hidden');
+    // ล็อกอินหน้า History ด้วยรหัสพนักงานจริง (เรียก Apps Script action=employee)
+async function verifyHistoryAccess(e){
+  e.preventDefault();
+  const input = document.getElementById('historyEmployeeId');
+  const empId = input.value.trim();
+
+  if (!empId){
+    alert('กรุณากรอกรหัสพนักงาน');
+    return;
+  }
+
+  try{
+    // เรียก Google Script -> handleEmployeeLookup_
+    const rs = await apiGet({ action:'employee', empId });
+
+    if (!rs.ok || !rs.data){
+      alert(rs.error || 'รหัสพนักงานไม่ถูกต้อง กรุณาลองใหม่');
+      return;
     }
 
-    function searchByCase(){
-      const caseId = document.getElementById('caseSearch').value.trim();
-      if(!caseId){ alert('กรุณากรอกรหัสเคส'); return; }
-      const mock = {
-        'HR-2025-001': { id:'HR-2025-001', type:'การเลิกจ้าง - ลาออก', date:'19 ต.ค. 2025', status:'รอดำเนินการ', employee:'นายสมชาย ใจดี (1234)', details:'พนักงานแผนกผลิตขอลาออกด้วยเหตุผลส่วนตัว' }
-      };
-      const result = mock[caseId.toUpperCase()];
-      if(result) showSearchResults([result]); else alert('ไม่พบเคสที่ค้นหา');
+    isHistoryLoggedIn = true;
+    historyEmp = rs.data;  // เก็บข้อมูลพนักงานไว้ใช้ต่อ
+
+    // ซ่อนหน้าล็อกอิน / เปิดหน้าเนื้อหา History
+    document.getElementById('historyLoginSection').classList.add('hidden');
+    document.getElementById('historyContent').classList.remove('hidden');
+
+    // โหลดรายการเคสของพนักงานคนนี้
+    await loadHistoryCases(empId);
+
+  }catch(err){
+    console.error(err);
+    alert('เกิดข้อผิดพลาดในการตรวจสอบรหัสพนักงาน');
+  }
+}
+
+function logoutHistory(){
+  isHistoryLoggedIn = false;
+  historyEmp = null;
+  historyCases = [];
+
+  document.getElementById('historyLoginSection').classList.remove('hidden');
+  document.getElementById('historyContent').classList.add('hidden');
+  document.getElementById('historyEmployeeId').value = '';
+
+  const box  = document.getElementById('searchResults');
+  const wrap = document.getElementById('resultsContainer');
+  if (box)  box.classList.add('hidden');
+  if (wrap) wrap.innerHTML = '';
+}
+    
+    // โหลดรายการเคสของพนักงานจากชีต Response Form
+async function loadHistoryCases(empId){
+  try{
+    const rs = await apiGet({ action:'listbyemp', empId });
+    if (!rs.ok){
+      alert(rs.error || 'ไม่สามารถโหลดรายการเคสได้');
+      return;
     }
+
+    historyCases = rs.rows || [];
+
+    // map ให้เป็นรูปแบบที่ showSearchResults ใช้
+    const mapped = historyCases.map(r => {
+      const status   = String(r['Status'] || '').trim() || '-';
+      const caseId   = String(r['CaseId'] || '').trim();
+      const dateStr  = r['Timestamp'] ? String(r['Timestamp']) : '';
+      const empName  = String(r['EmpName'] || '').trim();
+      const empIdVal = String(r['EmpId']   || '').trim();
+
+      const typeText = [
+        String(r['Category']    || '').trim(),
+        String(r['SubCategory'] || '').trim()
+      ].filter(Boolean).join(' - ') || 'ไม่ระบุประเภท';
+
+      const detailText =
+        String(r['Detail']  || '').trim() ||
+        String(r['Comment'] || '').trim() || '';
+
+      return {
+        id:       caseId,
+        type:     typeText,
+        date:     dateStr,
+        employee: empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
+        status:   status,
+        details:  detailText
+      };
+    });
+
+    showSearchResults(mapped);
+
+  }catch(err){
+    console.error(err);
+    alert('เกิดข้อผิดพลาดในการโหลดรายการเคส');
+  }
+}
+
+
+    function searchByCase(){
+  const caseId = document.getElementById('caseSearch').value.trim();
+  if (!caseId){
+    alert('กรุณากรอกรหัสเคส');
+    return;
+  }
+
+  if (!Array.isArray(historyCases) || !historyCases.length){
+    alert('ยังไม่มีข้อมูลเคสของพนักงานคนนี้');
+    return;
+  }
+
+  // หาเคสที่ caseId ตรงกันจาก historyCases
+  const target = historyCases.filter(r =>
+    String(r['CaseId'] || '').trim().toUpperCase() === caseId.toUpperCase()
+  );
+
+  if (!target.length){
+    alert('ไม่พบเคสที่ค้นหา');
+    return;
+  }
+
+  const mapped = target.map(r => {
+    const status   = String(r['Status'] || '').trim() || '-';
+    const caseId2  = String(r['CaseId'] || '').trim();
+    const dateStr  = r['Timestamp'] ? String(r['Timestamp']) : '';
+    const empName  = String(r['EmpName'] || '').trim();
+    const empIdVal = String(r['EmpId']   || '').trim();
+
+    const typeText = [
+      String(r['Category']    || '').trim(),
+      String(r['SubCategory'] || '').trim()
+    ].filter(Boolean).join(' - ') || 'ไม่ระบุประเภท';
+
+    const detailText =
+      String(r['Detail']  || '').trim() ||
+      String(r['Comment'] || '').trim() || '';
+
+    return {
+      id:       caseId2,
+      type:     typeText,
+      date:     dateStr,
+      employee: empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
+      status:   status,
+      details:  detailText
+    };
+  });
+
+  showSearchResults(mapped);
+}
 
     function showSearchResults(rows){
       const wrap = document.getElementById('resultsContainer');
@@ -1545,7 +1669,38 @@ const Comment = detailText;
     }
 
     function viewCaseHistory(id){ viewCase(id); }
-    function closeCaseByEmployee(id){ if(confirm(`คุณต้องการปิดเคส ${id} ใช่หรือไม่?`)){ alert(`เคส ${id} ได้รับการปิดเรียบร้อยแล้ว (เดโม)`); } }
+    async function closeCaseByEmployee(id){
+  if (!historyEmp || !historyEmp.empId){
+    alert('กรุณาล็อกอินด้วยรหัสพนักงานก่อน');
+    return;
+  }
+
+  if (!confirm(`คุณต้องการปิดเคส ${id} ใช่หรือไม่?`)){
+    return;
+  }
+
+  try{
+    const res = await apiPost({
+      action: 'close',
+      CaseId: id,
+      EmpId:  historyEmp.empId
+    });
+
+    if (!res.ok){
+      alert(res.error || 'ปิดเคสไม่สำเร็จ');
+      return;
+    }
+
+    alert(`เคส ${id} ได้รับการปิดเรียบร้อยแล้ว`);
+
+    // โหลดรายการเคสใหม่เพื่ออัปเดตสถานะบนหน้าจอ
+    await loadHistoryCases(historyEmp.empId);
+
+  }catch(err){
+    console.error(err);
+    alert('เกิดข้อผิดพลาดในการปิดเคส');
+  }
+}
 
     function viewCase(id){
       const data = {
