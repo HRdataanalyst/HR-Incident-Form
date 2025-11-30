@@ -100,7 +100,6 @@ input[type="time"]{
     .priority-medium { border-left: 6px solid #F59E0B }
     .priority-low { border-left: 6px solid #10B981 }
 
-    /* ลดขนาดตัวอักษร + UI ทั้งหมดลง ~70% */
 html {
   font-size: 85%;
 }
@@ -2074,19 +2073,25 @@ async function loadHistoryCases(empId){
       }
 
       return {
-        id: caseId2,
+        id:   caseId2,
+        type: typeText,          // ✅ เพิ่ม type ให้ใช้ในหน้า History
 
-        date:        dateRaw,      // ใช้ sort
-        dateDisplay: dateDisplay,  // ใช้แสดง
+        dateRaw:     dateRaw,    // ✅ เก็บ raw ไว้ sort
+        date:        dateRaw,    // ใช้สำรองถ้า dateDisplay ไม่มี
+        dateDisplay: dateDisplay,
 
-        employee:   empName && empIdVal ? `${empName} (${empIdVal})` : (empName || empIdVal || ''),
+        employee:
+          empName && empIdVal
+            ? `${empName} (${empIdVal})`
+            : (empName || empIdVal || ''),
+
         status:     statusDisplay,
         baseStatus: baseStatus,
         hrbpStatus: hrbpStatus,
         isClosed:   isClosed,
 
-        closedAt:  closeAtDisplay, // ใช้แสดง
-        closedRaw: closeRaw,       // ใช้ sort
+        closedAt:  closeAtDisplay,
+        closedRaw: closeRaw,
 
         details:   detailText
       };
@@ -2295,7 +2300,7 @@ async function loadHistoryCases(empId){
       <div class="flex justify-between items-start gap-3">
         <div>
           <h4 class="text-base sm:text-lg font-bold text-gray-800 mb-1">
-            ${r.id} - ${r.type}
+            ${[r.id, r.type].filter(Boolean).join(' - ')}
           </h4>
           <p class="text-gray-600 text-xs sm:text-sm mb-1">
             พนักงาน: ${r.employee || '-'}
