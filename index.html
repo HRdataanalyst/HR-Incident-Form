@@ -423,62 +423,68 @@ input[type="time"]{
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
   
   <!-- Format -->
-<div class="relative">
+<div>
   <label class="block text-gray-700 font-semibold mb-1 text-xs">Format</label>
-  <input
-    type="text"
-    id="locationFormat"
-    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-    placeholder="เช่น ชั้น/อาคาร/โซนผลิต"
-    autocomplete="off"
-    oninput="typeaheadFormat(this.value)"
-    onclick="toggleFormatDropdown(true)"
-  />
-  <!-- ▼ ปุ่ม Format -->
-  <button
-    id="formatToggleBtn"
-    type="button"
-    class="absolute right-2 top-8 px-2 py-1 text-xs border rounded hover:bg-gray-50"
-    onclick="event.stopPropagation(); toggleFormatDropdown(true)"
-    aria-label="แสดงรายการ Format"
-  >▼</button>
 
-  <div id="formatDropdown"
-       class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
+  <!-- กล่องนี้คุมเฉพาะ input + ปุ่ม + dropdown -->
+  <div class="relative">
+    <input
+      type="text"
+      id="locationFormat"
+      class="w-full px-3 py-2 pr-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+      placeholder="เช่น ชั้น/อาคาร/โซนผลิต"
+      autocomplete="off"
+      oninput="typeaheadFormat(this.value)"
+      onclick="toggleFormatDropdown(true)"
+    />
+    <!-- ▼ ปุ่ม Format -->
+    <button
+      id="formatToggleBtn"
+      type="button"
+      class="absolute right-2 top-1/2 -translate-y-1/2 transform px-2 py-1 text-xs border rounded hover:bg-gray-50"
+      onclick="event.stopPropagation(); toggleFormatDropdown(true)"
+      aria-label="แสดงรายการ Format"
+    >▼</button>
+
+    <div id="formatDropdown"
+         class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
+  </div>
 </div>
 
   <!-- Location -->
-<div class="relative">
+<div>
   <label class="block text-gray-700 font-semibold mb-1 text-xs">Location</label>
-  <input
-    type="text"
-    id="locationInput"
-    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-    placeholder="พิมพ์เพื่อค้นหาสถานที่..."
-    autocomplete="off"
-    oninput="typeaheadLocation(this.value)"
-    onclick="toggleLocationDropdown(true)"
-  />
-  <button
-    id="locationToggleBtn"
-    type="button"
-    class="absolute right-2 top-8 px-2 py-1 text-xs border rounded hover:bg-gray-50"
-    onclick="event.stopPropagation(); toggleLocationDropdown(true)"
-    aria-label="แสดงรายการ Location"
-  >▼</button>
-  <div id="locationDropdown"
-       class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
-</div>
 
+  <!-- กล่องนี้คุมเฉพาะ input + ปุ่ม + dropdown -->
+  <div class="relative">
+    <input
+      type="text"
+      id="locationInput"
+      class="w-full px-3 py-2 pr-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+      placeholder="พิมพ์เพื่อค้นหาสถานที่..."
+      autocomplete="off"
+      oninput="typeaheadLocation(this.value)"
+      onclick="toggleLocationDropdown(true)"
+    />
+    <button
+      id="locationToggleBtn"
+      type="button"
+      class="absolute right-2 top-1/2 -translate-y-1/2 transform px-2 py-1 text-xs border rounded hover:bg-gray-50"
+      onclick="toggleLocationDropdown(true)"
+      aria-label="แสดงรายการ Location"
+    >▼</button>
+    <div id="locationDropdown"
+         class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
+  </div>
 </div>
 
     <!-- ผู้เกี่ยวข้อง (เหมือนเดิม) -->
-    <div>
-      <label class="block text-gray-700 font-semibold mb-1 text-xs">ผู้เกี่ยวข้อง</label>
-      <input type="text"
-        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-        placeholder="ชื่อผู้เกี่ยวข้อง (ถ้ามี)" />
-    </div>
+<div class="sm:col-span-2">
+  <label class="block text-gray-700 font-semibold mb-1 text-xs">ผู้เกี่ยวข้อง</label>
+  <input type="text"
+    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+    placeholder="ชื่อผู้เกี่ยวข้อง (ถ้ามี)" />
+</div>
   </div>
 
   <!-- แนบรูปภาพ -->
