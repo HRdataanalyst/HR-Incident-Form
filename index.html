@@ -1779,8 +1779,9 @@ function logoutHRBP() {
     
     function viewFactoryDetails(factoryId){ showHRBPLogin(); window.selectedFactory=factoryId; }
 
-    // ✅ เวอร์ชันใหม่ – ใช้ fetch ตรง ๆ แบบเดียวกับ verifyEmployee
+    // ✅ เวอร์ชันใหม่ – แสดง loading popup ระหว่างตรวจสอบ + โหลดประวัติ
 async function verifyHistoryAccess(e) {
+
   e.preventDefault();
 
   const input = document.getElementById('historyEmployeeId');
@@ -1792,6 +1793,10 @@ async function verifyHistoryAccess(e) {
   }
 
   try {
+
+    // แสดง popup ขณะตรวจสอบ / โหลดข้อมูล
+    showLoading('กำลังตรวจสอบรหัสพนักงาน...');
+
     // เรียก Google Script เพื่อเช็กข้อมูลพนักงาน
     const url = API_URL + '?action=employee&empId=' + encodeURIComponent(empId);
     const res = await fetch(url, { method: 'GET' });
@@ -1807,19 +1812,27 @@ async function verifyHistoryAccess(e) {
       return;
     }
 
-    // เก็บสถานะพนักงานและเปิดหน้าประวัติ
+    // เก็บสถานะพนักงาน
     isHistoryLoggedIn = true;
     historyEmp = data.data;
 
+    // ซ่อนหน้า login และแสดงส่วนประวัติ
     document.getElementById('historyLoginSection').classList.add('hidden');
     document.getElementById('historyContent').classList.remove('hidden');
 
-    // โหลดเคสของพนักงานคนนี้
+    // โหลดเคสของพนักงานคนนี้ (ยังมี popup แสดงอยู่ระหว่างโหลด)
     await loadHistoryCases(empId);
 
   } catch (err) {
+
     console.error(err);
     alert('เกิดข้อผิดพลาดในการตรวจสอบรหัสพนักงาน');
+
+  } finally {
+
+    // ปิด popup ไม่ว่าจะสำเร็จหรือ error
+    hideLoading();
+
   }
 }
 
