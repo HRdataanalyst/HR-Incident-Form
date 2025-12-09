@@ -791,9 +791,15 @@ html {
 </div>
 
     <!-- รายการเคส HRBP -->
-    <div id="hrbpCasesContainer" class="space-y-3">
-      <!-- จะถูกเติมด้วย JavaScript -->
-    </div>
+<div id="hrbpCasesContainer" class="space-y-3">
+  <!-- จะถูกเติมด้วย JavaScript -->
+</div>
+
+<!-- Pagination HRBP -->
+<div id="hrbpPagination"
+     class="mt-4 flex items-center justify-between text-xs sm:text-sm text-gray-600">
+  <!-- ปุ่มเปลี่ยนหน้า / ตัวบอกหน้าจะถูกเติมด้วย JavaScript -->
+</div>
   </section>
 
   <!-- Employee Login Modal -->
@@ -943,12 +949,13 @@ let currentHRBP = null;   // ✅ เก็บข้อมูล HRBP ที่�
 let historyEmp   = null;
 let historyCases = [];
 
+let hrbpCurrentRows   = [];
+let hrbpFilterStatus  = 'ALL';
+let hrbpPageSize      = 15;  // ✅ แสดง 15 เคสต่อหน้า
+let hrbpCurrentPage   = 1;   // ✅ หน้าเริ่มต้น
+
 let historyCurrentRows  = [];
 let historyFilterStatus = 'ALL';
-
-// 👉 ตัวแปรสำหรับหน้า HRBP Monitor (ใช้กับปุ่ม Filter)
-let hrbpCurrentRows  = [];
-let hrbpFilterStatus = 'ALL';
 
     // ===== Page router =====
     function showPage(page) {
@@ -1935,7 +1942,7 @@ async function confirmHRBPCase(caseId) {
 }
 
     
-    function showHRBPCases(rows) {
+   function showHRBPCases(rows) {
   const box = document.getElementById('hrbpCasesContainer');
   if (!box) return;
 
@@ -1950,45 +1957,63 @@ async function confirmHRBPCase(caseId) {
         ยังไม่มีเคสที่คุณรับผิดชอบในขณะนี้
       </div>
     `;
+    // เคสเป็น 0 ก็ไม่ต้องแสดง pagination
+    renderHRBPPagination(0);
     return;
   }
 
-  // เรียงเคสจากใหม่ → เก่า โดยใช้ Timestamp
-  const sorted = [...sourceRows].sort((a, b) => {
-    const aTs = a.Timestamp ? new Date(a.Timestamp).getTime() : 0;
-    const bTs = b.Timestamp ? new Date(b.Timestamp).getTime() : 0;
-    return bTs - aTs;
+  // ----------------------------------------------------
+  // เตรียมข้อมูล: เวลาที่แจ้งเหตุ + สถานะ + priority
+  // ----------------------------------------------------
+  const enriched = sourceRows.map(row => {
+    const ts        = row.Timestamp ? new Date(row.Timestamp).getTime() : 0;
+    const baseStatus  = String(row.Status || '').trim();
+    const hrbpStatus  = String(row['Status-HRBP'] || '').trim();
+    const closeStatus = String(row['Status-Close'] || '').trim();
+    const isClosed    = !!closeStatus;
+
+    let displayStatus = baseStatus || '-';
+    if (isClosed) {
+      displayStatus = closeStatus || 'เสร็จสิ้น-ปิดเคส';
+    } else if (hrbpStatus) {
+      displayStatus = hrbpStatus;
+    }
+
+    // priority สถานะ
+    // 1 = รอตรวจสอบ, 2 = รอดำเนินการ/อื่น ๆ, 3 = ปิดเคส (อยู่ล่างสุด)
+    let statusPriority = 2;
+    if (displayStatus.includes('รอตรวจสอบ')) {
+      statusPriority = 1;
+    }
+    if (isClosed) {
+      statusPriority = 3;
+    }
+
+    return {
+      raw: row,
+      ts,
+      isClosed,
+      displayStatus,
+      statusPriority
+    };
   });
 
-  // -------------------------------
+  // ----------------------------------------------------
   // กรองตามสถานะจาก hrbpFilterStatus
-  // -------------------------------
+  // ----------------------------------------------------
   const filter = hrbpFilterStatus || 'ALL';
-  let filtered = sorted;
+  let filtered = enriched;
 
   if (filter !== 'ALL') {
-    filtered = sorted.filter(row => {
-      const baseStatus  = String(row.Status || '').trim();              // สถานะหลัก
-      const hrbpStatus  = String(row['Status-HRBP'] || '').trim();      // สถานะ HRBP
-      const closeStatus = String(row['Status-Close'] || '').trim();     // สถานะปิดเคส
-      const isClosed    = !!closeStatus;
+    filtered = enriched.filter(item => {
+      const st = item.displayStatus;
 
-      // สถานะที่ใช้โชว์บนการ์ด
-      let displayStatus = baseStatus || '-';
-      if (isClosed) {
-        displayStatus = closeStatus || 'เสร็จสิ้น-ปิดเคส';
-      } else if (hrbpStatus) {
-        displayStatus = hrbpStatus;
-      }
-
-      // เงื่อนไขการกรอง
       if (filter === 'เสร็จสิ้น-ปิดเคส') {
-        // ถ้าเลือก "เสร็จสิ้น-ปิดเคส" ให้ include ทุกแบบที่มีคำว่าเสร็จสิ้น/ปิดเคส
-        return displayStatus.includes('เสร็จสิ้น') || displayStatus.includes('ปิดเคส');
+        return item.isClosed ||
+               st.includes('เสร็จสิ้น') ||
+               st.includes('ปิดเคส');
       }
-
-      // สถานะอื่น ๆ ใช้ contains ธรรมดา
-      return displayStatus.includes(filter);
+      return st.includes(filter);
     });
   }
 
@@ -1998,13 +2023,50 @@ async function confirmHRBPCase(caseId) {
         ไม่พบเคสตามสถานะที่เลือก
       </div>
     `;
+    renderHRBPPagination(0);
     return;
   }
 
-  // -------------------------------
-  // วาดการ์ดเคส
-  // -------------------------------
-  filtered.forEach(row => {
+  // ----------------------------------------------------
+  // เรียงลำดับ
+  // - เคสที่ยังไม่ปิด: รอตรวจสอบ (1) → รอดำเนินการ/อื่น ๆ (2)
+  //   และในแต่ละกลุ่มให้ "ใหม่ที่สุดอยู่บน" (ts มาก → มาก่อน)
+  // - เคสที่ปิดแล้ว: priority 3 อยู่ล่างสุด และเรียง "ก่อนมาหลัง"
+  //   (= เวลาน้อยกว่าอยู่บน → เก่ากว่าอยู่บน)
+  // ----------------------------------------------------
+  filtered.sort((a, b) => {
+    if (a.statusPriority !== b.statusPriority) {
+      return a.statusPriority - b.statusPriority;
+    }
+
+    // ถ้าเป็นกลุ่มปิดเคสทั้งคู่
+    if (a.isClosed && b.isClosed) {
+      // เก่ากว่าอยู่บน: ts น้อยกว่า → มาก่อน
+      return a.ts - b.ts;
+    }
+
+    // กลุ่มยังไม่ปิด: ใหม่กว่าอยู่บน
+    return b.ts - a.ts;
+  });
+
+  // ----------------------------------------------------
+  // Pagination: 15 รายการต่อหน้า
+  // ----------------------------------------------------
+  renderHRBPPagination(filtered.length);
+
+  const pageSize = hrbpPageSize;
+  const startIdx = (hrbpCurrentPage - 1) * pageSize;
+  const endIdx   = startIdx + pageSize;
+  const pageRows = filtered.slice(startIdx, endIdx);
+
+  // ----------------------------------------------------
+  // วาดการ์ดเคสตาม pageRows
+  // ----------------------------------------------------
+  box.innerHTML = '';
+
+  pageRows.forEach(item => {
+    const row = item.raw;
+
     const caseId    = String(row.CaseId || '').trim();
     const cat       = String(row.Category || '').trim();
     const subCat    = String(row.SubCategory || '').trim();
@@ -2013,16 +2075,15 @@ async function confirmHRBPCase(caseId) {
     const empName   = String(row.EmpName || '').trim();
     const empId     = String(row.EmpId   || '').trim();
     const location  = String(row.Location|| '').trim();
-    const ts        = row.Timestamp ? String(row.Timestamp) : '';
+    const tsStr     = row.Timestamp ? String(row.Timestamp) : '';
     const rawClose  = row['Date-Close'] ? String(row['Date-Close']) : '';
 
-    const baseStatus  = String(row.Status || '').trim();          // สถานะหลัก
-    const hrbpStatus  = String(row['Status-HRBP'] || '').trim();  // สถานะ HRBP
-    const closeStatus = String(row['Status-Close'] || '').trim(); // สถานะปิดเคส
+    const baseStatus  = String(row.Status || '').trim();
+    const hrbpStatus  = String(row['Status-HRBP'] || '').trim();
+    const closeStatus = String(row['Status-Close'] || '').trim();
 
     const isClosed = !!closeStatus;
 
-    // สถานะที่จะโชว์
     let displayStatus = baseStatus || '-';
     if (isClosed) {
       displayStatus = closeStatus || 'เสร็จสิ้น-ปิดเคส';
@@ -2030,16 +2091,16 @@ async function confirmHRBPCase(caseId) {
       displayStatus = hrbpStatus;
     }
 
-    // สีการ์ดตามสถานะ
-    let tone = 'yellow'; // default = รอตรวจสอบ
+    // สีพื้นตามสถานะ
+    let tone = 'yellow';
     if (isClosed) {
       tone = 'green';
     } else if (displayStatus.includes('รอดำเนินการ')) {
       tone = 'orange';
     }
 
-    const dateDisplay  = ts       ? formatDateTime(ts)       : '-';
-    const closeDisplay = rawClose ? formatDateTime(rawClose) : '';
+    const dateDisplay  = tsStr     ? formatDateTime(tsStr)     : '-';
+    const closeDisplay = rawClose  ? formatDateTime(rawClose)  : '';
 
     const typeText   = [cat, subCat].filter(Boolean).join(' - ') || 'ไม่ระบุประเภท';
     const reporter   = empName && empId ? `${empName} (${empId})` : (empName || empId || '-');
@@ -2048,13 +2109,11 @@ async function confirmHRBPCase(caseId) {
     const card = document.createElement('div');
     card.className = `rounded-2xl border border-gray-200 bg-${tone}-50/60 p-4 sm:p-5 shadow-sm`;
 
-    // ✅ ตัดสินใจว่าจะใช้ปุ่มอะไร
+    // ปุ่ม action
     let actionLabel   = 'ดูรายละเอียด';
     let actionClass   = 'bg-blue-600 hover:bg-blue-700';
     let actionOnClick = `viewCase('${caseId}')`;
 
-    // เงื่อนไข "รอตรวจสอบ" → แสดงปุ่มยืนยันการแจ้งเหตุ
-    // ใช้สถานะหลัก (Status) ที่ยังเป็น "รอตรวจสอบ" และยังไม่มี Status-HRBP และยังไม่ปิดเคส
     if (!isClosed && !hrbpStatus && baseStatus.includes('รอตรวจสอบ')) {
       actionLabel   = 'ยืนยันการแจ้งเหตุ';
       actionClass   = 'bg-green-600 hover:bg-green-700';
@@ -2114,9 +2173,68 @@ async function confirmHRBPCase(caseId) {
     box.appendChild(card);
   });
 }
+    
+    function renderHRBPPagination(totalItems) {
+  const pag = document.getElementById('hrbpPagination');
+  if (!pag) return;
+
+  const pageSize   = hrbpPageSize;
+  const totalPages = totalItems > 0 ? Math.ceil(totalItems / pageSize) : 1;
+
+  if (hrbpCurrentPage > totalPages) {
+    hrbpCurrentPage = totalPages;
+  }
+
+  // ถ้าหน้าเดียว ไม่ต้องแสดงอะไร
+  if (totalItems === 0 || totalPages <= 1) {
+    pag.innerHTML = '';
+    return;
+  }
+
+  const isFirst = hrbpCurrentPage === 1;
+  const isLast  = hrbpCurrentPage === totalPages;
+
+  const prevDisabledAttr = isFirst ? 'disabled' : '';
+  const nextDisabledAttr = isLast  ? 'disabled' : '';
+
+  const prevExtraClass = isFirst ? ' opacity-40 cursor-not-allowed' : ' hover:bg-gray-100';
+  const nextExtraClass = isLast  ? ' opacity-40 cursor-not-allowed' : ' hover:bg-gray-100';
+
+  pag.innerHTML = `
+    <div class="flex items-center gap-2">
+      <button type="button"
+              class="px-3 py-1 rounded-full border border-gray-300 bg-white text-gray-700 text-xs sm:text-sm${prevExtraClass}"
+              onclick="changeHRBPPage(-1)" ${prevDisabledAttr}>
+        ‹ ก่อนหน้า
+      </button>
+    </div>
+
+    <div class="text-xs sm:text-sm text-gray-600">
+      หน้า ${hrbpCurrentPage} / ${totalPages}
+      <span class="hidden sm:inline">(${totalItems} เคส)</span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button type="button"
+              class="px-3 py-1 rounded-full border border-gray-300 bg-white text-gray-700 text-xs sm:text-sm${nextExtraClass}"
+              onclick="changeHRBPPage(1)" ${nextDisabledAttr}>
+        ถัดไป ›
+      </button>
+    </div>
+  `;
+}
+
+function changeHRBPPage(direction) {
+  hrbpCurrentPage += direction;
+  if (hrbpCurrentPage < 1) hrbpCurrentPage = 1;
+  showHRBPCases();  // จะคำนวณ filter + sort + pagination ใหม่อีกรอบ
+}
+
+    
     function setHRBPFilter(status) {
-  // เก็บสถานะที่เลือก
+  // เปลี่ยน filter → ย้อนกลับไปหน้า 1 เสมอ
   hrbpFilterStatus = status;
+  hrbpCurrentPage  = 1;
 
   const buttons = document.querySelectorAll('[data-hrbp-filter-btn]');
 
@@ -2124,13 +2242,11 @@ async function confirmHRBPCase(caseId) {
     const val   = btn.getAttribute('data-filter-value');
     const color = btn.getAttribute('data-color'); // gray / yellow / orange / green
 
-    // ลบพื้นไฮไลต์เดิมออกก่อน
     btn.classList.remove(
       'bg-gray-100', 'bg-yellow-50', 'bg-orange-50', 'bg-green-50',
       'font-semibold'
     );
 
-    // ปุ่มที่ถูกเลือก → เติมพื้นสีจาง ๆ + ตัวหนานิดหน่อย
     if (val === status) {
       if (color === 'yellow') {
         btn.classList.add('bg-yellow-50', 'font-semibold');
@@ -2139,14 +2255,11 @@ async function confirmHRBPCase(caseId) {
       } else if (color === 'green') {
         btn.classList.add('bg-green-50', 'font-semibold');
       } else {
-        // ปุ่ม "ทั้งหมด"
         btn.classList.add('bg-gray-100', 'font-semibold');
       }
     }
-    // ไม่ต้องแตะ border/text เพราะเรากำหนดไว้แล้วใน HTML ให้ตรงกับสีของแต่ละสถานะ
   });
 
-  // refresh เคสตาม filter ที่เลือก
   showHRBPCases();
 }
     
