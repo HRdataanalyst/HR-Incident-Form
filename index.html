@@ -1300,49 +1300,7 @@ async function loadCategories(opts = {}){
 function hideLoading(){
   document.getElementById('loadingModal').classList.add('hidden');
 }
-  async function loadSubCategories(catTH, catEN, opts = {}) {
-  const silent = !!opts.silent;
-
-  if (!silent) {
-    console.log('โหลดประเภทย่อยสำหรับ:', catTH, '/', catEN);
-  }
-
-  // เรียก Apps Script ด้วย action=subcategories
-  const params = {
-    action: 'subcategories',
-    cat: catTH || ''
-  };
-
-  // ถ้ามีค่า EN ค่อยส่งไปด้วย (ใช้ชื่อ cat_en ให้ตรงกับ Apps Script)
-  if (catEN) {
-    params.cat_en = catEN || '';
-  }
-
-  const query = new URLSearchParams(params).toString();
-  const url   = API_URL + '?' + query;
-
-  const res = await fetch(url, { method: 'GET', cache: 'no-cache' });
-  const rs  = await res.json();
-
-  console.log('subcategories response:', rs);
-
-  if (!rs.ok) {
-    throw new Error(rs.error || 'โหลดประเภทย่อยไม่สำเร็จ');
-  }
-
-  const rows = rs.rows || [];
-
-  // map ให้อยู่ในรูป { name: ..., th: ..., en: ... }
-  return rows
-    .map(r => ({
-      name: String(r.name || r.TH || r.th || r.Subcategory1 || '').trim(),
-      th:   String(r.th   || r.TH || r.Subcategory1        || '').trim(),
-      en:   String(r.en   || r.EN || r['Subcategory1-Eng'] || '').trim()
-    }))
-    .filter(x => x.name); // ตัดแถวที่ว่างทิ้ง
-}
-
-    
+ 
    async function loadDetails(catTH, subTH){
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -1411,43 +1369,129 @@ function renderDetailCards(groups){
   container.appendChild(frag);
 }
 
-function renderSubCategoryCards(rows){
+    // ---------- โหลดประเภทย่อยจากชีต Case_Master (คอลัมน์ C: Subcategory1) ----------
+async function loadSubCategories(catTH, catEN, opts = {}) {
+  const silent = !!(opts && opts.silent);
+
+  if (!silent) showLoading('กำลังโหลดหมวดย่อย...');
+
+  try {
+    const params = {
+      action: 'subcategories',
+      cat:    catTH || '',
+      cat_en: catEN || ''
+    };
+
+    const rs = await apiGet(params);
+
+    if (!rs.ok) {
+      // ถ้า Apps Script ส่ง error -> โยนให้ selectCategory ไปเข้า catch
+      throw new Error(rs.error || 'โหลดข้อมูลหมวดย่อยไม่สำเร็จ');
+    }
+
+    const rows = rs.rows || [];
+
+    // rs.rows มาจาก handleSubCategories_ ใหม่: [{ name, th, en }]
+    subCategories = rows.map(r => {
+      const nameTH = String(r.name || r.th || '').trim();
+
+      return {
+        name: nameTH,
+        th:   nameTH,
+        en:   String(r.en || '').trim()
+      };
+    }).filter(r => r.name);
+
+    return subCategories;
+  } catch (err) {
+    console.error('loadSubCategories error', err);
+    if (!silent) {
+      alert('ไม่สามารถโหลดประเภทย่อยได้ กรุณาลองใหม่อีกครั้ง');
+    }
+    return [];
+  } finally {
+    if (!silent) hideLoading();
+  }
+}
+
+async function selectCategory(cat) {
+  // 1) แปลงข้อมูล category ให้ได้ชื่อไทย / อังกฤษ / slug ชัดเจน
+  const norm = normalizeCategoryRow(cat);
+
+  selectedCategory   = String(norm.slug || '').trim();
+  selectedCategoryTH = String(norm.th   || '').trim();   // ต้องตรงกับ Category-Thai (คอลัมน์ A)
+  selectedCategoryEN = String(norm.en   || '').trim();
+
+  try {
+    // แสดง popup โหลด
+    showLoading('กำลังโหลดหมวดหมู่ย่อย...');
+
+    // 2) ดึง Subcategory1 จากชีต Case_Master
+    const subs = await loadSubCategories(
+      selectedCategoryTH,
+      selectedCategoryEN,
+      { silent: true }
+    );
+
+    // 3) ตั้งหัวข้อบน Step หมวดหมู่ย่อย
+    document.getElementById('subCategoryTitle').textContent =
+      `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
+
+    // 4) วาดการ์ดหมวดหมู่ย่อยจาก Subcategory1 (คอลัมน์ C)
+    //    - ถ้ามีข้อมูล → การ์ดเช่น ไฟ, ลื่นล้ม, บาดเจ็บ, อุบัติเหตุเดินทาง
+    //    - ถ้าไม่มีข้อมูล → renderSubCategoryCards([]) จะโชว์ข้อความ “ไม่พบประเภทย่อยสำหรับหมวดนี้”
+    renderSubCategoryCards(subs || []);
+
+    // 5) เปลี่ยนหน้าจอจาก Step 2 → Step 3 (หมวดหมู่ย่อย)
+    document.getElementById('categoryStep').classList.add('hidden');
+    document.getElementById('subCategoryStep').classList.remove('hidden');
+
+    document.getElementById('step2').classList.remove('active');
+    document.getElementById('step2').classList.add('completed');
+    document.getElementById('step3').classList.add('active');
+
+    currentStep = 3;
+
+    // ❌ ไม่มีการเรียก showEmployeeLogin() ที่นี่แล้ว
+    //    Login จะถูกเรียกตอนกดเลือก "รายละเอียด" (selectDetail) เท่านั้น
+  } catch (err) {
+    console.error('selectCategory error', err);
+    alert('ไม่สามารถโหลดประเภทย่อยได้ กรุณาลองใหม่อีกครั้ง');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ---------- วาดการ์ดประเภทย่อย ----------
+function renderSubCategoryCards() {
   const container = document.getElementById('subCategoryCards');
   container.innerHTML = '';
 
-  if (!rows.length) {
-    container.innerHTML = `<div class="text-center text-gray-600 text-sm">ไม่พบประเภทย่อยสำหรับหมวดนี้</div>`;
+  if (!subCategories || !subCategories.length) {
+    container.innerHTML =
+      '<p class="text-center text-gray-500">ไม่พบประเภทย่อยสำหรับประเภทนี้</p>';
     return;
   }
 
-  // โทนสีเดียวกับหน้าแรก (หมวดหลัก)
-  const palette = ['blue','orange','yellow','purple','pink','green','indigo'];
+  subCategories.forEach(sc => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className =
+      'w-full p-4 rounded-2xl bg-white shadow-md hover:shadow-lg transition ' +
+      'border border-gray-100 text-left';
 
-  const frag = document.createDocumentFragment();
-  rows.forEach((r, i) => {
-    const tone = palette[i % palette.length];
+    const label = escapeHTML(sc.th || sc.name || '');
 
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className =
-      `card-hover bg-gradient-to-br from-white to-${tone}-50
-       rounded-2xl shadow-xl p-6 border border-${tone}-100
-       hover:border-${tone}-300 hover:shadow-2xl
-       h-[130px] w-full flex items-center justify-center text-center transition`;
-
-    // ไม่มีอิโมจิแล้วนะครับ
-    card.innerHTML = `
-      <div>
-        <h3 class="text-base font-semibold text-gray-800 mb-1">${escapeHTML_(r.name)}</h3>
-      </div>
+    btn.innerHTML = `
+      <div class="text-base font-semibold">${label}</div>
     `;
 
-    card.onclick = () => selectSubCategory(r.name);
-    frag.appendChild(card);
+    btn.onclick = () => selectSubCategory(sc);
+    container.appendChild(btn);
   });
-
-  container.appendChild(frag);
 }
+
+
    
     // ===== Employee login (for proceeding to details) =====
     function showEmployeeLogin(){ document.getElementById('employeeModal').classList.remove('hidden'); }
@@ -1507,46 +1551,6 @@ async function verifyEmployee(e){
 }
   } 
 
-async function selectCategory(cat) {
-  // ปรับให้แน่ใจว่า cat อยู่ในรูปแบบ normalize แล้ว
-  const norm = normalizeCategoryRow(cat);
-
-  selectedCategory   = String(norm.slug || '').trim();
-  selectedCategoryTH = String(norm.th   || '').trim();
-  selectedCategoryEN = String(norm.en   || '').trim();
-
-  try {
-    showLoading('กำลังโหลดประเภทย่อย...');
-
-    // ✅ เรียกให้ตรงกับ signature: (catTH, catEN, opts)
-    const subs = await loadSubCategories(
-      selectedCategoryTH,
-      selectedCategoryEN,
-      { silent: true }
-    );
-
-    if (subs && subs.length) {
-      document.getElementById('subCategoryTitle').textContent =
-        `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
-
-      document.getElementById('categoryStep').classList.add('hidden');
-      document.getElementById('subCategoryStep').classList.remove('hidden');
-      document.getElementById('step2').classList.remove('active');
-      document.getElementById('step2').classList.add('completed');
-      document.getElementById('step3').classList.add('active');
-      currentStep = 3;
-    } else {
-      // ไม่มีประเภทย่อย → ให้ระบบ/HR ไปเช็คข้อมูล
-      selectedSubCategoryName = '';
-      showEmployeeLogin();
-    }
-  } catch (err) {
-    console.error(err);
-    alert('ไม่สามารถโหลดประเภทย่อยได้ กรุณาลองใหม่อีกครั้ง');
-  } finally {
-    hideLoading();
-  }
-}
 
     function showSubCategories(category){
       const container = document.getElementById('subCategoryCards');
