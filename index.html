@@ -1493,25 +1493,27 @@ function toggleTimeEdit(){
   // === เข้าสtep 2: โหลดหมวดหมู่แบบมี popup ===
   document.getElementById(`step${currentStep}`).classList.add('active');
 
-  // ยัง "ไม่" เปิด categoryStep เพื่อไม่ให้พื้นหลังโชว์ก่อน
-  document.getElementById('categoryStep').classList.add('hidden');
+      // ยัง "ไม่" เปิด categoryStep เพื่อไม่ให้พื้นหลังโชว์ก่อน
+      document.getElementById('categoryStep').classList.add('hidden');
 
-  // เปิด popup โหลด
-  showLoading('กำลังโหลดประเภทการแจ้ง...');
+      // เปิด popup โหลด
+      showLoading('กำลังโหลดประเภทการแจ้ง...');
 
-  // โหลดข้อมูล + render การ์ด (แบบเงียบ ไม่แตะ loader บนหน้า)
-  await loadCategories({ silent:true });
+      // ✅ โหลดข้อมูล + render การ์ด โดย "ไม่" silent
+      //    ถ้า Apps Script มีปัญหา หรือ rows ว่าง จะขึ้นข้อความใน #categoryError
+      await loadCategories({ silent: false });
 
-  // ปิด popup แล้วโชว์ section พร้อม effect เผยทั้งชุด
-  hideLoading();
-  const section = document.getElementById('categoryStep');
-  section.classList.remove('hidden');
-  section.classList.add('opacity-0');
-  requestAnimationFrame(()=>{
-    section.classList.add('transition-opacity','duration-300');
-    section.classList.remove('opacity-0');
-  });
-}
+      // ปิด popup แล้วโชว์ section พร้อม effect เผยทั้งชุด
+      hideLoading();
+      const section = document.getElementById('categoryStep');
+      section.classList.remove('hidden');
+      section.classList.add('opacity-0');
+      requestAnimationFrame(() => {
+        section.classList.add('transition-opacity', 'duration-300');
+        section.classList.remove('opacity-0');
+      });
+
+  }
 
     function goBack(){
       if(currentStep === 4){
