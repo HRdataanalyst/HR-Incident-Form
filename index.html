@@ -1126,28 +1126,36 @@ let historyFilterStatus = 'ALL';
     grid.appendChild(frag);
   }
 
-  function renderCategories(rows) {
-    const grid = document.getElementById('categoryGrid');
-    grid.innerHTML = '';
-    const palette = ['blue','orange','yellow','purple','pink','green','indigo'];
-    const frag = document.createDocumentFragment();
-    rows.forEach((cat, i) => {
-      const tone = palette[i % palette.length];
-      const btn = document.createElement('button');
-      btn.className = `card-hover bg-gradient-to-br from-white to-${tone}-50
-  rounded-xl shadow-lg px-6 py-6 border border-${tone}-100
-  hover:border-${tone}-300 hover:shadow-xl text-left
-  transition-all duration-200 h-[130px] flex flex-col justify-center`;
-      btn.innerHTML = `
-        <div class="text-center">
-          <h3 class="text-base font-bold text-gray-800 mb-1">${escapeHTML_(cat.th)}</h3>
-          <p class="text-xs text-gray-600">${escapeHTML_(cat.en || '')}</p>
-        </div>`;
-      btn.onclick = () => selectCategory(cat);
-      frag.appendChild(btn);
-    });
-    grid.appendChild(frag);
+  async function selectCategory(cat) {
+  // ปรับให้แน่ใจว่า cat อยู่ในรูปแบบ normalize แล้ว
+  const norm = normalizeCategoryRow(cat);
+
+  selectedCategory   = String(norm.slug || '').trim();
+  selectedCategoryTH = String(norm.th   || '').trim();
+  selectedCategoryEN = String(norm.en   || '').trim();
+
+  showLoading('กำลังโหลดประเภทย่อย...');
+
+  const subs = await loadSubCategories(selectedCategoryTH, { silent:true });
+
+  hideLoading();
+
+  if (subs && subs.length){
+    document.getElementById('subCategoryTitle').textContent =
+      `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
+
+    document.getElementById('categoryStep').classList.add('hidden');
+    document.getElementById('subCategoryStep').classList.remove('hidden');
+    document.getElementById('step2').classList.remove('active');
+    document.getElementById('step2').classList.add('completed');
+    document.getElementById('step3').classList.add('active');
+    currentStep = 3;
+  } else {
+    // ไม่มีประเภทย่อย → ไปล็อกอินพนักงานต่อ
+    selectedSubCategoryName = '';
+    showEmployeeLogin();
   }
+}
     
     // ===== Dynamic Categories from Case_Master M/N =====
     async function loadCategories(opts = {}){
@@ -1180,13 +1188,15 @@ let historyFilterStatus = 'ALL';
     clearTimeout(timeoutId);
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const rs = await res.json();
-    if(!rs.ok) throw new Error(rs.error || 'โหลดหมวดหมู่ไม่สำเร็จ');
+console.log('categories response:', rs);
 
-    const rows = rs.rows || [];
-    if(!rows.length) throw new Error('ไม่พบหมวดหมู่ใน Case_Master (คอลัมน์ M/N)');
+if(!rs.ok) throw new Error(rs.error || 'โหลดหมวดหมู่ไม่สำเร็จ');
 
-    renderCategories(rows);
-    setCachedCategories(rows);
+const rows = rs.rows || [];
+if(!rows.length) throw new Error('ไม่พบหมวดหมู่ใน Case_Master (คอลัมน์ M/N)');
+
+renderCategories(rows);
+setCachedCategories(rows);
   }catch(err){
     clearTimeout(timeoutId);
     if(!silent){
@@ -1195,6 +1205,54 @@ let historyFilterStatus = 'ALL';
     }
   }
 }
+
+    function normalizeCategoryRow(row) {
+  // กรณีส่งมาเป็น string เดี่ยวๆ
+  if (typeof row === 'string') {
+    return {
+      th: row,
+      en: '',
+      slug: row
+    };
+  }
+
+  // กรณีส่งมาเป็น array เช่น ["การยุติการจ้าง","Termination","termination"]
+  if (Array.isArray(row)) {
+    return {
+      th:   row[0] || '',
+      en:   row[1] || '',
+      slug: row[2] || row[0] || ''
+    };
+  }
+
+  // กรณีเป็น object แต่ key ไม่ตรง (รองรับ key ที่พบบ่อย)
+  const th =
+    row.th ||
+    row.TH ||
+    row.CategoryTH ||
+    row.categoryTh ||
+    row.category_th ||
+    '';
+
+  const en =
+    row.en ||
+    row.EN ||
+    row.CategoryEN ||
+    row.categoryEn ||
+    row.category_en ||
+    '';
+
+  const slug =
+    row.slug ||
+    row.Slug ||
+    row.id ||
+    row.ID ||
+    th ||
+    '';
+
+  return { th, en, slug };
+}
+
 
     function escapeHTML_(s){
       return String(s || '')
