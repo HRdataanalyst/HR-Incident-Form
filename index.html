@@ -1393,28 +1393,27 @@ async function loadSubCategories(catTH, catEN, opts = {}) {
   const query = new URLSearchParams(params).toString();
   const url   = API_URL + '?' + query;
 
-  const res = await fetch(url, { method: 'GET', cache: 'no-cache' });
-  const rs  = await res.json();
+  try {
+    const res = await fetch(url, { method: 'GET', cache: 'no-cache' });
+    const rs  = await res.json();
 
-  console.log('subcategories response:', rs);
+    console.log('subcategories response:', rs);
 
-  if (!rs.ok) {
-    throw new Error(rs.error || 'โหลดประเภทย่อยไม่สำเร็จ');
-  }
+    if (!rs.ok) {
+      throw new Error(rs.error || 'โหลดประเภทย่อยไม่สำเร็จ');
+    }
 
-  const rows = rs.rows || [];
+    const rows = rs.rows || [];
 
-  // map ให้อยู่ในรูป { name: ..., th: ..., en: ... }
-  return rows
-    .map(r => ({
-      name: String(r.name || r.TH || r.th || r.Subcategory1 || '').trim(),  // ← ค่าจากคอลัมน์ C
-      th:   String(r.th   || r.TH || r.Subcategory1        || '').trim(),
-      en:   String(r.en   || r.EN || r['Subcategory1-Eng'] || '').trim()
-    }))
-    .filter(x => x.name); // ตัดแถวที่ว่างทิ้ง
-}
+    // map ให้อยู่ในรูป { name: ..., th: ..., en: ... }
+    return rows
+      .map(r => ({
+        name: String(r.name || r.TH || r.th || r.Subcategory1 || '').trim(),  // ค่าจากคอลัมน์ C
+        th:   String(r.th   || r.TH || r.Subcategory1        || '').trim(),
+        en:   String(r.en   || r.EN || r['Subcategory1-Eng'] || '').trim()
+      }))
+      .filter(x => x.name); // ตัดแถวที่ว่างทิ้ง
 
-    return subCategories;
   } catch (err) {
     console.error('loadSubCategories error', err);
     if (!silent) {
@@ -1422,9 +1421,13 @@ async function loadSubCategories(catTH, catEN, opts = {}) {
     }
     return [];
   } finally {
-    if (!silent) hideLoading();
+    if (!silent) {
+      // ถ้าในที่อื่นไม่มี showLoading/hideLoading แล้วใช้ที่นี่ก็เปิดบรรทัดนี้ได้
+      // hideLoading();
+    }
   }
 }
+    
 
 async function selectCategory(cat) {
   // 1) แปลงข้อมูล category จากการ์ดที่คลิก
@@ -1562,6 +1565,7 @@ async function verifyEmployee(e){
   const msg = (err && err.message) ? err.message : String(err);
   alert('อัปโหลดไม่สำเร็จ\n' + msg + '\n\n(ถ้าขึ้น AbortError ให้ลองใหม่/เน็ตช้า)');
 }
+  }
 
     // ===== Details step =====
    function proceedToDetails() {
