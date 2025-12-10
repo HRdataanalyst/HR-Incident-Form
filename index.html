@@ -1467,24 +1467,19 @@ async function verifyEmployee(e){
 
     // ===== Category & Sub-category =====
        async function selectCategory(cat){
-  // เก็บค่าหมวดที่เลือก (จาก action=categories)
   selectedCategory   = String(cat.slug || '').trim();
   selectedCategoryTH = String(cat.th   || '').trim();
   selectedCategoryEN = String(cat.en   || '').trim();
 
-  // เปิด popup โหลด
   showLoading('กำลังโหลดประเภทย่อย...');
-         
-         // เรียก API หา "ประเภทย่อย" ของหมวดนี้ (กรองตามคอลัมน์ A)
+
   const subs = await loadSubCategories(selectedCategoryTH, { silent:true });
-         
-         // ปิด popup
+
   hideLoading();
 
-      // ถ้า slug เข้ากับแมปเดิม (termination/accident/safety/complaint) → แสดง sub
-     if (subs && subs.length){
-    // มีประเภทย่อย → ไป Step 3
-    document.getElementById('subCategoryTitle').textContent = `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
+  if (subs && subs.length){
+    document.getElementById('subCategoryTitle').textContent =
+      `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
     document.getElementById('categoryStep').classList.add('hidden');
     document.getElementById('subCategoryStep').classList.remove('hidden');
     document.getElementById('step2').classList.remove('active');
@@ -1492,11 +1487,10 @@ async function verifyEmployee(e){
     document.getElementById('step3').classList.add('active');
     currentStep = 3;
   } else {
-    // ไม่มีประเภทย่อย → ข้ามไปกรอกรายละเอียด
     selectedSubCategoryName = '';
     showEmployeeLogin();
-      }
-    }
+  }
+}
 
     function showSubCategories(category){
       const container = document.getElementById('subCategoryCards');
