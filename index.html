@@ -142,9 +142,12 @@ input:focus {
 
    <!-- เมนูสำหรับเดสก์ท็อป (แสดงตั้งแต่ sm ขึ้นไป) -->
 <div id="desktopMenu" class="hidden sm:flex flex-wrap justify-end gap-2 sm:gap-3">
-  <button onclick="showPage('report')" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 text-sm sm:text-base">
-    แจ้งเหตุการณ์
-  </button>
+  <button
+  onclick="resetForm()"
+  class="px-6 py-2.5 rounded-full text-sm font-semibold 
+  bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-2">
+  แจ้งเหตุการณ์
+</button>
   <button onclick="showPage('history')" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 text-sm sm:text-base">
     History
   </button>
@@ -170,10 +173,11 @@ input:focus {
 
     <!-- แผงเมนูมือถือ (เริ่มต้นซ่อน) -->
 <div id="mobileMenu" class="sm:hidden hidden bg-white border-t shadow-md px-4 py-3 space-y-2">
-  <button onclick="showPage('report'); toggleMobileMenu(false)"
-          class="w-full px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">
-    แจ้งเหตุการณ์
-  </button>
+  <button
+  onclick="resetForm(); toggleMobileMenu(false)"
+  class="w-full text-left px-4 py-2 rounded-lg text-sm font-semibold text-gray-800 hover:bg-gray-100 flex items-center gap-2">
+  แจ้งเหตุการณ์
+</button>
   <button onclick="showPage('history'); toggleMobileMenu(false)"
           class="w-full px-4 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700">
     History
@@ -974,24 +978,9 @@ let historyCurrentRows  = [];
 let historyFilterStatus = 'ALL';
 
     // ===== Page router =====
-    function showPage(page) {
+function showPage(page) {
   // จดจำหน้าปัจจุบัน
   currentPage = page;
-
-  // --------- รีเซ็ตค่าของแต่ละหน้า ---------
-  if (page === 'report') {
-    if (typeof resetForm === 'function') {
-      resetForm();
-    }
-  } else if (page === 'history') {
-    if (typeof logoutHistory === 'function') {
-      logoutHistory();
-    }
-  } else if (page === 'dashboard') {
-    // ถ้ามี resetDashboard ในอนาคต ค่อยใส่
-  } else if (page === 'hrbp') {
-    // หน้า HRBP ยังไม่ต้อง reset อะไรพิเศษตอนนี้
-  }
 
   // --------- ซ่อนทุกหน้า ---------
   document.getElementById('reportPage').classList.add('hidden');
@@ -1004,6 +993,11 @@ let historyFilterStatus = 'ALL';
     document.getElementById('reportPage').classList.remove('hidden');
   } else if (page === 'history') {
     document.getElementById('historyPage').classList.remove('hidden');
+
+    // ถ้าต้องการให้ history รีเฟรชทุกครั้งที่เปิด สามารถเรียกที่นี่ได้
+    if (typeof logoutHistory === 'function') {
+      logoutHistory();
+    }
   } else if (page === 'dashboard') {
     document.getElementById('dashboardPage').classList.remove('hidden');
   } else if (page === 'hrbp') {
