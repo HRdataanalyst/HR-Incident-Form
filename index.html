@@ -463,7 +463,7 @@ input:focus {
       oninput="typeaheadFormat(this.value)"
       onclick="toggleFormatDropdown(true)"
     />
-    <!-- ▼ ปุ่ม Format -->
+    <!-- ▼ ปุ่ม Format --> 
     <button
       id="formatToggleBtn"
       type="button"
@@ -649,7 +649,7 @@ input:focus {
       data-history-filter="รอดำเนินการ">
       รอดำเนินการ
     </button>
-
+ 
     <!-- ปิดเคส (จะไปแม็ปกับสถานะในชีต = เสร็จสิ้น) -->
     <button
       type="button"
@@ -869,42 +869,59 @@ input:focus {
     
     <!-- HR Monitor Login Modal -->
 <div id="hrMonitorLoginModal"
-     class="fixed inset-0 z-40 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
-  <div class="bg-white rounded-3xl shadow-xl w-[90%] max-w-md p-6 sm:p-8 relative">
-    <!-- icon ด้านบน -->
-    <div class="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center mx-auto mb-3">
-      <span class="text-2xl">🛡️</span>
-    </div>
-    <h2 class="text-xl sm:text-2xl font-extrabold text-gray-900 text-center">
-      HR Monitor
-    </h2>
-    <p class="mt-1 text-sm text-gray-500 text-center">
-      เข้าสู่ระบบสำหรับ HR Monitor
-    </p>
+     class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+    <div class="text-center mb-6">
+      <!-- ไอคอนแบบเดียวกับ HRBP แต่โทนสีฟ้า -->
+      <div class="w-16 h-16 bg-blue-50 border border-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944
+               a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9
+               c0 5.591 3.824 10.29 9 11.622
+               5.176-1.332 9-6.03 9-11.622
+               0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      </div>
 
-    <form class="mt-5 space-y-4" onsubmit="verifyHRMonitorAccess(event)">
-      <div>
-        <label for="hrMonitorEmployeeId" class="block text-sm font-semibold text-gray-700 mb-1">
+      <h3 class="text-xl font-bold text-gray-800 mb-1">
+        HR Monitor
+      </h3>
+      <p class="text-gray-600">
+        เข้าสู่ระบบสำหรับ HR Monitor
+      </p>
+    </div>
+
+    <form onsubmit="verifyHRMonitorAccess(event)">
+      <div class="mb-6">
+        <label for="hrMonitorEmployeeId" class="block text-gray-700 font-semibold mb-2">
           รหัสพนักงาน
         </label>
         <input
-          id="hrMonitorEmployeeId"
           type="text"
+          id="hrMonitorEmployeeId"
+          required
           placeholder="กรอกรหัสพนักงาน"
-          class="w-full px-4 py-3 rounded-2xl border border-gray-300 bg-white
-                 text-sm sm:text-base
-                 focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
-        >
+          class="w-full px-4 py-3 rounded-xl border border-gray-300
+                 focus:ring-2 focus:ring-blue-200 focus:border-blue-500
+                 text-lg text-center"
+        />
       </div>
 
-      <div class="flex items-center justify-end gap-3 pt-2">
-        <button type="button"
-                class="px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                onclick="closeHRMonitorLogin()">
+      <!-- ปุ่มล่าง layout เดียวกับ HRBP: ยกเลิก + เข้าสู่ระบบ (เต็มด้านขวา) -->
+      <div class="flex gap-3">
+        <button
+          type="button"
+          onclick="closeHRMonitorLogin()"
+          class="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50">
           ยกเลิก
         </button>
-        <button type="submit"
-                class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 shadow">
+        <button
+          type="submit"
+          class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl">
           เข้าสู่ระบบ
         </button>
       </div>
@@ -1687,7 +1704,7 @@ const Comment = detailText;
   }
 }
 
-    function resetForm(){
+   function resetForm(){
   // รีเซ็ตตัวแปร step / category
   currentStep = 1;
   selectedCategory = '';
@@ -1703,6 +1720,7 @@ const Comment = detailText;
     const el = document.getElementById(id);
     if (i === 0) el.classList.remove('hidden');
     else el.classList.add('hidden');
+
     if (i < 4){
       const st = document.getElementById(`step${i+1}`);
       st.classList.remove('active','completed');
@@ -1733,9 +1751,6 @@ const Comment = detailText;
   } catch (e) {
     console.error('reset images error', e);
   }
-
-  // กลับไปหน้าแบบฟอร์มแจ้งเหตุ (แท็บรายงาน)
-  showPage('report');
 }
 
     // ===== HRBP login & dashboard =====
