@@ -1341,9 +1341,13 @@ function hideLoading(){
   // เรียก Apps Script ด้วย action=subcategories
   const params = {
     action: 'subcategories',
-    cat: catTH || '',
-    catEn: catEN || ''
+    cat: catTH || ''
   };
+
+  // ถ้ามีค่า EN ค่อยส่งไปด้วย (ใช้ชื่อ cat_en ให้ตรงกับ Apps Script)
+  if (catEN) {
+    params.cat_en = catEN || '';
+  }
 
   const query = new URLSearchParams(params).toString();
   const url   = API_URL + '?' + query;
