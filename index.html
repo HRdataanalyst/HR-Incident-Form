@@ -1022,6 +1022,9 @@ let selectedSubCategory     = '';
 let selectedSubCategoryName = '';
 let selectedDetailName      = '';
 
+// 🔧 เก็บรายการหมวดหมู่ย่อย (Subcategory1) ของประเภทที่เลือก
+let subCategories = [];
+
 let currentPage       = 'report';
 let isHRBPLoggedIn    = false;
 let isHistoryLoggedIn = false;
@@ -1369,38 +1372,47 @@ function renderDetailCards(groups){
   container.appendChild(frag);
 }
 
-    // ---------- โหลดประเภทย่อยจากชีต Case_Master (คอลัมน์ C: Subcategory1) ----------
 async function loadSubCategories(catTH, catEN, opts = {}) {
-  const silent = !!(opts && opts.silent);
+  const silent = !!opts.silent;
 
-  if (!silent) showLoading('กำลังโหลดหมวดย่อย...');
+  if (!silent) {
+    console.log('โหลดประเภทย่อยสำหรับ:', catTH, '/', catEN);
+  }
 
-  try {
-    const params = {
-      action: 'subcategories',
-      cat:    catTH || '',
-      cat_en: catEN || ''
-    };
+  // เรียก Apps Script ด้วย action=subcategories
+  const params = {
+    action: 'subcategories',
+    cat:    catTH || ''
+  };
 
-    const rs = await apiGet(params);
+  // ส่ง Category-Eng ไปด้วยถ้ามี (ชื่อพารามิเตอร์ฝั่ง Apps Script = cat_en)
+  if (catEN) {
+    params.cat_en = catEN || '';
+  }
 
-    if (!rs.ok) {
-      // ถ้า Apps Script ส่ง error -> โยนให้ selectCategory ไปเข้า catch
-      throw new Error(rs.error || 'โหลดข้อมูลหมวดย่อยไม่สำเร็จ');
-    }
+  const query = new URLSearchParams(params).toString();
+  const url   = API_URL + '?' + query;
 
-    const rows = rs.rows || [];
+  const res = await fetch(url, { method: 'GET', cache: 'no-cache' });
+  const rs  = await res.json();
 
-    // rs.rows มาจาก handleSubCategories_ ใหม่: [{ name, th, en }]
-    subCategories = rows.map(r => {
-      const nameTH = String(r.name || r.th || '').trim();
+  console.log('subcategories response:', rs);
 
-      return {
-        name: nameTH,
-        th:   nameTH,
-        en:   String(r.en || '').trim()
-      };
-    }).filter(r => r.name);
+  if (!rs.ok) {
+    throw new Error(rs.error || 'โหลดประเภทย่อยไม่สำเร็จ');
+  }
+
+  const rows = rs.rows || [];
+
+  // map ให้อยู่ในรูป { name: ..., th: ..., en: ... }
+  return rows
+    .map(r => ({
+      name: String(r.name || r.TH || r.th || r.Subcategory1 || '').trim(),  // ← ค่าจากคอลัมน์ C
+      th:   String(r.th   || r.TH || r.Subcategory1        || '').trim(),
+      en:   String(r.en   || r.EN || r['Subcategory1-Eng'] || '').trim()
+    }))
+    .filter(x => x.name); // ตัดแถวที่ว่างทิ้ง
+}
 
     return subCategories;
   } catch (err) {
@@ -1415,15 +1427,14 @@ async function loadSubCategories(catTH, catEN, opts = {}) {
 }
 
 async function selectCategory(cat) {
-  // 1) แปลงข้อมูล category ให้ได้ชื่อไทย / อังกฤษ / slug ชัดเจน
+  // 1) แปลงข้อมูล category จากการ์ดที่คลิก
   const norm = normalizeCategoryRow(cat);
 
   selectedCategory   = String(norm.slug || '').trim();
-  selectedCategoryTH = String(norm.th   || '').trim();   // ต้องตรงกับ Category-Thai (คอลัมน์ A)
+  selectedCategoryTH = String(norm.th   || '').trim();   // ตรงกับ Category-Thai (คอลัมน์ A)
   selectedCategoryEN = String(norm.en   || '').trim();
 
   try {
-    // แสดง popup โหลด
     showLoading('กำลังโหลดหมวดหมู่ย่อย...');
 
     // 2) ดึง Subcategory1 จากชีต Case_Master
@@ -1433,16 +1444,18 @@ async function selectCategory(cat) {
       { silent: true }
     );
 
-    // 3) ตั้งหัวข้อบน Step หมวดหมู่ย่อย
+    // เก็บไว้ในตัวแปร global เผื่อใช้ที่อื่น
+    subCategories = subs || [];
+
+    // 3) ตั้งหัวข้อบนหน้าหมวดหมู่ย่อย
     document.getElementById('subCategoryTitle').textContent =
       `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
 
-    // 4) วาดการ์ดหมวดหมู่ย่อยจาก Subcategory1 (คอลัมน์ C)
-    //    - ถ้ามีข้อมูล → การ์ดเช่น ไฟ, ลื่นล้ม, บาดเจ็บ, อุบัติเหตุเดินทาง
-    //    - ถ้าไม่มีข้อมูล → renderSubCategoryCards([]) จะโชว์ข้อความ “ไม่พบประเภทย่อยสำหรับหมวดนี้”
-    renderSubCategoryCards(subs || []);
+    // 4) แสดงการ์ดหมวดหมู่ย่อยตามคอลัมน์ C
+    //    เช่น ไฟ / ลื่นล้ม / บาดเจ็บ / อุบัติเหตุเดินทาง
+    renderSubCategoryCards(subCategories);
 
-    // 5) เปลี่ยนหน้าจอจาก Step 2 → Step 3 (หมวดหมู่ย่อย)
+    // 5) เปลี่ยน Step: จากหน้า "เลือกประเภทการแจ้ง" → "เลือกหมวดหมู่"
     document.getElementById('categoryStep').classList.add('hidden');
     document.getElementById('subCategoryStep').classList.remove('hidden');
 
@@ -1452,8 +1465,8 @@ async function selectCategory(cat) {
 
     currentStep = 3;
 
-    // ❌ ไม่มีการเรียก showEmployeeLogin() ที่นี่แล้ว
-    //    Login จะถูกเรียกตอนกดเลือก "รายละเอียด" (selectDetail) เท่านั้น
+    // ❌ ไม่ข้ามไปหน้า Login ที่นี่แล้ว
+    //    Login จะไปตอนเลือก "รายละเอียด" เท่านั้น
   } catch (err) {
     console.error('selectCategory error', err);
     alert('ไม่สามารถโหลดประเภทย่อยได้ กรุณาลองใหม่อีกครั้ง');
