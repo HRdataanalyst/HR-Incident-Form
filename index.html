@@ -1507,32 +1507,39 @@ async function verifyEmployee(e){
 }
   } 
 
-// ===== Category step (ใหม่) =====
 async function selectCategory(cat) {
-  if (!cat) return;
+  // ปรับให้แน่ใจว่า cat อยู่ในรูปแบบ normalize แล้ว
+  const norm = normalizeCategoryRow(cat);
 
-  // เก็บหมวดหลักที่เลือก
-  selectedCategoryTH = cat.th;
-  selectedCategoryEN = cat.en;
-  selectedSubCategoryName = '';
-  selectedDetailName = '';
+  selectedCategory   = String(norm.slug || '').trim();
+  selectedCategoryTH = String(norm.th   || '').trim();
+  selectedCategoryEN = String(norm.en   || '').trim();
 
   try {
-    showLoading('กำลังโหลดหมวดหมู่ย่อย...');
+    showLoading('กำลังโหลดประเภทย่อย...');
 
-    // ส่งทั้ง TH / EN ไป
-    const subs = await loadSubCategories(selectedCategoryTH, selectedCategoryEN);
+    // ✅ เรียกให้ตรงกับ signature: (catTH, catEN, opts)
+    const subs = await loadSubCategories(
+      selectedCategoryTH,
+      selectedCategoryEN,
+      { silent: true }
+    );
 
-    if (!subs || !subs.length) {
-      // ถ้าไม่มีประเภทย่อยเลย
-      alert('ไม่พบหมวดหมู่ย่อยของประเภทนี้ กรุณาให้ HR ตรวจสอบข้อมูลในชีต Case_Master');
-      return;
+    if (subs && subs.length) {
+      document.getElementById('subCategoryTitle').textContent =
+        `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
+
+      document.getElementById('categoryStep').classList.add('hidden');
+      document.getElementById('subCategoryStep').classList.remove('hidden');
+      document.getElementById('step2').classList.remove('active');
+      document.getElementById('step2').classList.add('completed');
+      document.getElementById('step3').classList.add('active');
+      currentStep = 3;
+    } else {
+      // ไม่มีประเภทย่อย → ให้ระบบ/HR ไปเช็คข้อมูล
+      selectedSubCategoryName = '';
+      showEmployeeLogin();
     }
-
-    // มีประเภทย่อย → ไป Step หมวดหมู่ย่อย
-    goToStep('subCategoryStep', 3);
-    renderSubCategoryCards(subs);
-
   } catch (err) {
     console.error(err);
     alert('ไม่สามารถโหลดประเภทย่อยได้ กรุณาลองใหม่อีกครั้ง');
