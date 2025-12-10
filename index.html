@@ -148,12 +148,9 @@ input:focus {
   <button onclick="showPage('history')" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 text-sm sm:text-base">
     History
   </button>
-  <button
-  type="button"
-  class="px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-gray-800 hover:bg-gray-900 shadow-sm"
-  onclick="openHRMonitorLogin()">
-  Dashboard
-</button>
+  <button onclick="showPage('dashboard')" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-800 text-sm sm:text-base">
+    Dashboard
+  </button>
   <button onclick="openHRBP()" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 text-sm sm:text-base">
   🔐 HRBP
 </button>
@@ -463,7 +460,7 @@ input:focus {
       oninput="typeaheadFormat(this.value)"
       onclick="toggleFormatDropdown(true)"
     />
-    <!-- ▼ ปุ่ม Format --> 
+    <!-- ▼ ปุ่ม Format -->
     <button
       id="formatToggleBtn"
       type="button"
@@ -649,7 +646,7 @@ input:focus {
       data-history-filter="รอดำเนินการ">
       รอดำเนินการ
     </button>
- 
+
     <!-- ปิดเคส (จะไปแม็ปกับสถานะในชีต = เสร็จสิ้น) -->
     <button
       type="button"
@@ -866,69 +863,6 @@ input:focus {
       </form>
     </div>
   </div>
-    
-    <!-- HR Monitor Login Modal -->
-<div id="hrMonitorLoginModal"
-     class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
-    <div class="text-center mb-6">
-      <!-- ไอคอนแบบเดียวกับ HRBP แต่โทนสีฟ้า -->
-      <div class="w-16 h-16 bg-blue-50 border border-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
-        <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944
-               a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9
-               c0 5.591 3.824 10.29 9 11.622
-               5.176-1.332 9-6.03 9-11.622
-               0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      </div>
-
-      <h3 class="text-xl font-bold text-gray-800 mb-1">
-        HR Monitor
-      </h3>
-      <p class="text-gray-600">
-        เข้าสู่ระบบสำหรับ HR Monitor
-      </p>
-    </div>
-
-    <form onsubmit="verifyHRMonitorAccess(event)">
-      <div class="mb-6">
-        <label for="hrMonitorEmployeeId" class="block text-gray-700 font-semibold mb-2">
-          รหัสพนักงาน
-        </label>
-        <input
-          type="text"
-          id="hrMonitorEmployeeId"
-          required
-          placeholder="กรอกรหัสพนักงาน"
-          class="w-full px-4 py-3 rounded-xl border border-gray-300
-                 focus:ring-2 focus:ring-blue-200 focus:border-blue-500
-                 text-lg text-center"
-        />
-      </div>
-
-      <!-- ปุ่มล่าง layout เดียวกับ HRBP: ยกเลิก + เข้าสู่ระบบ (เต็มด้านขวา) -->
-      <div class="flex gap-3">
-        <button
-          type="button"
-          onclick="closeHRMonitorLogin()"
-          class="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50">
-          ยกเลิก
-        </button>
-        <button
-          type="submit"
-          class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl">
-          เข้าสู่ระบบ
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-
 
   <!-- Case Detail Modal (demo) -->
   <div id="caseModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -1025,10 +959,8 @@ let selectedDetailName      = '';
 let currentPage       = 'report';
 let isHRBPLoggedIn    = false;
 let isHistoryLoggedIn = false;
-let isHRMonitorLoggedIn = false;
 
-let currentHRBP = null;
-let currentHRMonitor = null;
+let currentHRBP = null;   // ✅ เก็บข้อมูล HRBP ที่ล็อกอิน (id, name, email)
 
 let historyEmp   = null;
 let historyCases = [];
@@ -1043,13 +975,7 @@ let historyFilterStatus = 'ALL';
 
     // ===== Page router =====
     function showPage(page) {
-
-  // กันเปิด dashboard ตรง ๆ ถ้ายังไม่ login HR Monitor
-  if (page === 'dashboard' && !isHRMonitorLoggedIn) {
-    openHRMonitorLogin();
-    return;
-  }
-
+  // จดจำหน้าปัจจุบัน
   currentPage = page;
 
   // --------- รีเซ็ตค่าของแต่ละหน้า ---------
@@ -1126,195 +1052,75 @@ let historyFilterStatus = 'ALL';
     grid.appendChild(frag);
   }
 
-  async function selectCategory(cat) {
-  // ปรับให้แน่ใจว่า cat อยู่ในรูปแบบ normalize แล้ว
-  const norm = normalizeCategoryRow(cat);
-
-  selectedCategory   = String(norm.slug || '').trim();
-  selectedCategoryTH = String(norm.th   || '').trim();
-  selectedCategoryEN = String(norm.en   || '').trim();
-
-  showLoading('กำลังโหลดประเภทย่อย...');
-
-  const subs = await loadSubCategories(selectedCategoryTH, { silent:true });
-
-  hideLoading();
-
-  if (subs && subs.length){
-    document.getElementById('subCategoryTitle').textContent =
-      `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
-
-    document.getElementById('categoryStep').classList.add('hidden');
-    document.getElementById('subCategoryStep').classList.remove('hidden');
-    document.getElementById('step2').classList.remove('active');
-    document.getElementById('step2').classList.add('completed');
-    document.getElementById('step3').classList.add('active');
-    currentStep = 3;
-  } else {
-    // ไม่มีประเภทย่อย → ไปล็อกอินพนักงานต่อ
-    selectedSubCategoryName = '';
-    showEmployeeLogin();
+  function renderCategories(rows) {
+    const grid = document.getElementById('categoryGrid');
+    grid.innerHTML = '';
+    const palette = ['blue','orange','yellow','purple','pink','green','indigo'];
+    const frag = document.createDocumentFragment();
+    rows.forEach((cat, i) => {
+      const tone = palette[i % palette.length];
+      const btn = document.createElement('button');
+      btn.className = `card-hover bg-gradient-to-br from-white to-${tone}-50
+  rounded-xl shadow-lg px-6 py-6 border border-${tone}-100
+  hover:border-${tone}-300 hover:shadow-xl text-left
+  transition-all duration-200 h-[130px] flex flex-col justify-center`;
+      btn.innerHTML = `
+        <div class="text-center">
+          <h3 class="text-base font-bold text-gray-800 mb-1">${escapeHTML_(cat.th)}</h3>
+          <p class="text-xs text-gray-600">${escapeHTML_(cat.en || '')}</p>
+        </div>`;
+      btn.onclick = () => selectCategory(cat);
+      frag.appendChild(btn);
+    });
+    grid.appendChild(frag);
   }
-}
     
     // ===== Dynamic Categories from Case_Master M/N =====
-async function loadCategories(opts = {}){
-  const silent   = !!opts.silent;
-  const grid     = document.getElementById('categoryGrid');
+    async function loadCategories(opts = {}){
+  const silent = !!opts.silent;
+  const grid = document.getElementById('categoryGrid');
   const errorBox = document.getElementById('categoryError');
 
-  // เคลียร์ข้อความ error + แสดง skeleton ตอนโหลด
-  if (!silent) {
-    if (errorBox) {
-      errorBox.classList.add('hidden');
-      errorBox.textContent = '';
-    }
+  if(!silent){
+    // ไม่มีข้อความ loader แล้ว: ซ่อน error อย่างเดียว
+    errorBox.classList.add('hidden');
+    // ถ้าอยากมี skeleton ตอนไม่ silent คงไว้ได้:
     renderCategorySkeleton();
   }
 
-  // ดึงจาก cache ก่อน ถ้ามี
   const cached = getCachedCategories();
   if (cached && cached.length) {
-    try {
-      renderCategories(cached);
-    } catch (err) {
-      console.error('renderCategories (from cache) error:', err);
-    }
+    renderCategories(cached);
+    // ไม่มีอะไรต้องซ่อน เพราะเราไม่ใช้ข้อความ loader แล้ว
     if (silent) {
-      // ถ้า silent และมี cache แล้ว ไม่ต้องยิง server ซ้ำ
-      return;
+      // silent mode ก็ไม่ต้องทำอะไรเพิ่ม
     }
   }
 
-  // ยิงไปที่ Google Script ผ่าน helper apiGet (ไม่มี timeout 5 วิแล้ว)
-  try {
-    const rs = await apiGet({ action: 'categories' });
-    console.log('categories response:', rs);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    if (!rs.ok) {
-      throw new Error(rs.error || 'โหลดหมวดหมู่ไม่สำเร็จ');
-    }
+  try{
+    const url = API_URL + '?' + new URLSearchParams({ action:'categories' }).toString();
+    const res = await fetch(url, { method:'GET', signal: controller.signal, cache:'no-cache' });
+    clearTimeout(timeoutId);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rs = await res.json();
+    if(!rs.ok) throw new Error(rs.error || 'โหลดหมวดหมู่ไม่สำเร็จ');
 
     const rows = rs.rows || [];
-    if (!rows.length) {
-      throw new Error('ไม่พบหมวดหมู่ใน Case_Master (คอลัมน์ M/N)');
-    }
+    if(!rows.length) throw new Error('ไม่พบหมวดหมู่ใน Case_Master (คอลัมน์ M/N)');
 
     renderCategories(rows);
     setCachedCategories(rows);
-  } catch (err) {
-    console.error('loadCategories error:', err);
-    if (!silent && errorBox) {
-      errorBox.textContent = String(err.message || err);
+  }catch(err){
+    clearTimeout(timeoutId);
+    if(!silent){
+      errorBox.textContent = (err.name==='AbortError') ? 'การเชื่อมต่อช้า โปรดลองใหม่' : String(err.message || err);
       errorBox.classList.remove('hidden');
     }
   }
 }
-
-    function normalizeCategoryRow(row) {
-    // 1) ถ้าเป็น string เดี่ยว ๆ
-    if (typeof row === 'string') {
-      return { th: row, en: '', slug: row };
-    }
-
-    // 2) ถ้าเป็น array เช่น ["การยุติการจ้าง","Termination","termination"]
-    if (Array.isArray(row)) {
-      return {
-        th:   row[0] || '',
-        en:   row[1] || '',
-        slug: row[2] || row[0] || ''
-      };
-    }
-
-    // 3) ถ้าเป็น object
-    if (row && typeof row === 'object') {
-      const th =
-        row.th ||
-        row.TH ||
-        row.Thai ||
-        row.thai ||
-        row['Category-Thai show'] ||
-        row['Category-Thai'] ||
-        row.CategoryThai ||
-        row.categoryTh ||
-        row.category_th ||
-        '';
-
-      const en =
-        row.en ||
-        row.EN ||
-        row.English ||
-        row.english ||
-        row['Category-Eng show'] ||
-        row['Category-Eng'] ||
-        row.CategoryEng ||
-        row.categoryEn ||
-        row.category_en ||
-        '';
-
-      const slug =
-        row.slug ||
-        row.Slug ||
-        row.id   ||
-        row.ID   ||
-        th       ||
-        '';
-
-      return { th, en, slug };
-    }
-
-    // fallback กันข้อมูลแปลก ๆ
-    return { th: '', en: '', slug: '' };
-  }
-
-  // วาดการ์ดประเภทการแจ้งลงใน #categoryGrid
-  function renderCategories(rows) {
-    const grid = document.getElementById('categoryGrid');
-    grid.innerHTML = '';
-
-    if (!rows || !rows.length) {
-      grid.innerHTML = `
-        <div class="col-span-2 lg:col-span-4 text-center text-gray-600 text-sm">
-          ไม่พบประเภทการแจ้งจาก Case_Master
-        </div>
-      `;
-      return;
-    }
-
-    const palette = ['blue','orange','yellow','purple','pink','green','indigo'];
-    const frag = document.createDocumentFragment();
-
-    rows.forEach((row, index) => {
-      const cat  = normalizeCategoryRow(row);
-      const tone = palette[index % palette.length];
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className =
-        `card-hover bg-gradient-to-br from-white to-${tone}-50
-         rounded-2xl shadow-xl p-6 border border-${tone}-100
-         hover:border-${tone}-300 hover:shadow-2xl
-         h-[130px] w-full flex items-center justify-center text-center transition`;
-
-      const th = escapeHTML_(cat.th || '');
-      const en = escapeHTML_(cat.en || '');
-
-      btn.innerHTML = `
-        <div>
-          <h3 class="text-base font-semibold text-gray-800 mb-1">${th || '-'}</h3>
-          ${en ? `<p class="text-sm text-gray-600">${en}</p>` : ''}
-        </div>
-      `;
-
-      btn.onclick = () => selectCategory(cat);
-
-      frag.appendChild(btn);
-    });
-
-    grid.appendChild(frag);
-  }
-
-
 
     function escapeHTML_(s){
       return String(s || '')
@@ -1529,19 +1335,24 @@ async function verifyEmployee(e){
 
     // ===== Category & Sub-category =====
        async function selectCategory(cat){
+  // เก็บค่าหมวดที่เลือก (จาก action=categories)
   selectedCategory   = String(cat.slug || '').trim();
   selectedCategoryTH = String(cat.th   || '').trim();
   selectedCategoryEN = String(cat.en   || '').trim();
 
+  // เปิด popup โหลด
   showLoading('กำลังโหลดประเภทย่อย...');
-
+         
+         // เรียก API หา "ประเภทย่อย" ของหมวดนี้ (กรองตามคอลัมน์ A)
   const subs = await loadSubCategories(selectedCategoryTH, { silent:true });
-
+         
+         // ปิด popup
   hideLoading();
 
-  if (subs && subs.length){
-    document.getElementById('subCategoryTitle').textContent =
-      `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
+      // ถ้า slug เข้ากับแมปเดิม (termination/accident/safety/complaint) → แสดง sub
+     if (subs && subs.length){
+    // มีประเภทย่อย → ไป Step 3
+    document.getElementById('subCategoryTitle').textContent = `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
     document.getElementById('categoryStep').classList.add('hidden');
     document.getElementById('subCategoryStep').classList.remove('hidden');
     document.getElementById('step2').classList.remove('active');
@@ -1549,10 +1360,11 @@ async function verifyEmployee(e){
     document.getElementById('step3').classList.add('active');
     currentStep = 3;
   } else {
+    // ไม่มีประเภทย่อย → ข้ามไปกรอกรายละเอียด
     selectedSubCategoryName = '';
     showEmployeeLogin();
-  }
-}
+      }
+    }
 
     function showSubCategories(category){
       const container = document.getElementById('subCategoryCards');
@@ -1670,50 +1482,39 @@ function toggleTimeEdit(){
 
   // ซ่อน section ปัจจุบัน + อัปเดตตัวชี้ขั้นตอน
   document.getElementById(ids[currentStep-1]).classList.add('hidden');
-  if (currentStep <= 4) {
+  if(currentStep <= 4){
     const step = document.getElementById(`step${currentStep}`);
     step.classList.remove('active');
     step.classList.add('completed');
   }
   currentStep++;
 
-  // ❌ ถ้าไม่ใช่การเข้าสtep 2 → ทำงานปกติ
-  if (currentStep !== 2) {
+  // ถ้าไม่ใช่การเข้าสtep 2 ก็แสดงตามปกติ
+  if (currentStep !== 2){
     document.getElementById(ids[currentStep-1]).classList.remove('hidden');
-    if (currentStep <= 4) {
-      document.getElementById(`step${currentStep}`).classList.add('active');
-    }
+    if(currentStep <= 4){ document.getElementById(`step${currentStep}`).classList.add('active'); }
     return;
   }
 
-  // ✅ เข้าสtep 2: โหลดหมวดหมู่ (ให้เห็น error บนหน้า ถ้า backend ผิด)
+  // === เข้าสtep 2: โหลดหมวดหมู่แบบมี popup ===
   document.getElementById(`step${currentStep}`).classList.add('active');
 
-  const section  = document.getElementById('categoryStep');
-  const errorBox = document.getElementById('categoryError');
+  // ยัง "ไม่" เปิด categoryStep เพื่อไม่ให้พื้นหลังโชว์ก่อน
+  document.getElementById('categoryStep').classList.add('hidden');
 
-  section.classList.add('hidden');
-  if (errorBox) {
-    errorBox.classList.add('hidden');
-    errorBox.textContent = '';
-  }
-
+  // เปิด popup โหลด
   showLoading('กำลังโหลดประเภทการแจ้ง...');
 
-  try {
-    // 🔴 เปลี่ยนจาก silent:true → ให้โชว์ error บนหน้า
-    await loadCategories({ silent:false });
-  } catch (err) {
-    console.error('loadCategories failed:', err);
-  } finally {
-    hideLoading();
-  }
+  // โหลดข้อมูล + render การ์ด (แบบเงียบ ไม่แตะ loader บนหน้า)
+  await loadCategories({ silent:true });
 
-  // แสดง Step 2 ไม่ว่าจะสำเร็จหรือมี error (เพื่อให้เห็นข้อความ error)
+  // ปิด popup แล้วโชว์ section พร้อม effect เผยทั้งชุด
+  hideLoading();
+  const section = document.getElementById('categoryStep');
   section.classList.remove('hidden');
   section.classList.add('opacity-0');
-  requestAnimationFrame(() => {
-    section.classList.add('transition-opacity', 'duration-300');
+  requestAnimationFrame(()=>{
+    section.classList.add('transition-opacity','duration-300');
     section.classList.remove('opacity-0');
   });
 }
@@ -1829,7 +1630,7 @@ const Comment = detailText;
   }
 }
 
-   function resetForm(){
+    function resetForm(){
   // รีเซ็ตตัวแปร step / category
   currentStep = 1;
   selectedCategory = '';
@@ -1845,7 +1646,6 @@ const Comment = detailText;
     const el = document.getElementById(id);
     if (i === 0) el.classList.remove('hidden');
     else el.classList.add('hidden');
-
     if (i < 4){
       const st = document.getElementById(`step${i+1}`);
       st.classList.remove('active','completed');
@@ -1876,6 +1676,9 @@ const Comment = detailText;
   } catch (e) {
     console.error('reset images error', e);
   }
+
+  // กลับไปหน้าแบบฟอร์มแจ้งเหตุ (แท็บรายงาน)
+  showPage('report');
 }
 
     // ===== HRBP login & dashboard =====
@@ -1973,75 +1776,6 @@ function logoutHRBP() {
   // กลับไปหน้าแจ้งเหตุการณ์
   showPage('report');
 }
-    
-    function openHRMonitorLogin() {
-  const modal = document.getElementById('hrMonitorLoginModal');
-  const input = document.getElementById('hrMonitorEmployeeId');
-
-  if (modal) {
-    modal.classList.remove('hidden');
-  }
-  if (input) {
-    input.value = '';
-    setTimeout(() => input.focus(), 100);
-  }
-}
-
-function closeHRMonitorLogin() {
-  const modal = document.getElementById('hrMonitorLoginModal');
-  if (modal) {
-    modal.classList.add('hidden');
-  }
-}
-    async function verifyHRMonitorAccess(e) {
-  e.preventDefault();
-
-  const input = document.getElementById('hrMonitorEmployeeId');
-  const empId = (input?.value || '').trim();
-
-  if (!empId) {
-    alert('กรุณากรอกรหัสพนักงาน');
-    return;
-  }
-
-  try {
-    // ใช้ popup กำลังตรวจสอบ (เหมือน HRBP)
-    showLoading('กำลังตรวจสอบรหัสพนักงาน...');
-
-    const url = API_URL + '?action=employee&empId=' + encodeURIComponent(empId);
-    const res = await fetch(url, { method: 'GET' });
-    if (!res.ok) {
-      throw new Error('HTTP ' + res.status);
-    }
-
-    const data = await res.json();
-    if (!data.ok || !data.data) {
-      alert(data.error || 'รหัสพนักงานไม่ถูกต้อง กรุณาลองใหม่');
-      return;
-    }
-
-    // login สำเร็จ
-    isHRMonitorLoggedIn = true;
-    currentHRMonitor    = data.data;
-
-    closeHRMonitorLogin();
-
-    // ถ้ามีส่วน header บน Dashboard อยากโชว์ชื่อก็ทำเพิ่มได้ เช่น
-    // document.getElementById('dashboardHeaderName').textContent = currentHRMonitor.EmpName || empId;
-
-    // แสดงหน้า Dashboard
-    showPage('dashboard');
-
-  } catch (err) {
-    console.error(err);
-    alert('เกิดข้อผิดพลาดในการตรวจสอบรหัสพนักงาน');
-  } finally {
-    hideLoading();
-  }
-}
-
-
-    
     
     function viewFactoryDetails(factoryId){ showHRBPLogin(); window.selectedFactory=factoryId; }
 
