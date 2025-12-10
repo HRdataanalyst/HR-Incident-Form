@@ -1158,112 +1158,117 @@ let historyFilterStatus = 'ALL';
 }
     
     // ===== Dynamic Categories from Case_Master M/N =====
-    async function loadCategories(opts = {}){
-  const silent = !!opts.silent;
-  const grid = document.getElementById('categoryGrid');
+async function loadCategories(opts = {}){
+  const silent   = !!opts.silent;
+  const grid     = document.getElementById('categoryGrid');
   const errorBox = document.getElementById('categoryError');
 
-  if(!silent){
-    // ไม่มีข้อความ loader แล้ว: ซ่อน error อย่างเดียว
-    errorBox.classList.add('hidden');
-    // ถ้าอยากมี skeleton ตอนไม่ silent คงไว้ได้:
+  // เคลียร์ข้อความ error + แสดง skeleton ตอนโหลด
+  if (!silent) {
+    if (errorBox) {
+      errorBox.classList.add('hidden');
+      errorBox.textContent = '';
+    }
     renderCategorySkeleton();
   }
 
+  // ดึงจาก cache ก่อน ถ้ามี
   const cached = getCachedCategories();
   if (cached && cached.length) {
-    renderCategories(cached);
-    // ไม่มีอะไรต้องซ่อน เพราะเราไม่ใช้ข้อความ loader แล้ว
+    try {
+      renderCategories(cached);
+    } catch (err) {
+      console.error('renderCategories (from cache) error:', err);
+    }
     if (silent) {
-      // silent mode ก็ไม่ต้องทำอะไรเพิ่ม
+      // ถ้า silent และมี cache แล้ว ไม่ต้องยิง server ซ้ำ
+      return;
     }
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  // ยิงไปที่ Google Script ผ่าน helper apiGet (ไม่มี timeout 5 วิแล้ว)
+  try {
+    const rs = await apiGet({ action: 'categories' });
+    console.log('categories response:', rs);
 
-  try{
-    const url = API_URL + '?' + new URLSearchParams({ action:'categories' }).toString();
-    const res = await fetch(url, { method:'GET', signal: controller.signal, cache:'no-cache' });
-    clearTimeout(timeoutId);
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const rs = await res.json();
-console.log('categories response:', rs);
-
-if(!rs.ok) throw new Error(rs.error || 'โหลดหมวดหมู่ไม่สำเร็จ');
-
-const rows = rs.rows || [];
-if(!rows.length) throw new Error('ไม่พบหมวดหมู่ใน Case_Master (คอลัมน์ M/N)');
-
-renderCategories(rows);
-setCachedCategories(rows);
-   } catch (err) {
-    clearTimeout(timeoutId);
-
-    const msg = (err && err.name === 'AbortError')
-      ? 'การเชื่อมต่อช้า โปรดลองใหม่'
-      : String(err && err.message ? err.message : err || 'เกิดข้อผิดพลาดในการโหลดหมวดหมู่');
-
-    console.error('loadCategories error:', err);
-
-    if (errorBox) {
-      errorBox.textContent = msg;
-      errorBox.classList.remove('hidden');
+    if (!rs.ok) {
+      throw new Error(rs.error || 'โหลดหมวดหมู่ไม่สำเร็จ');
     }
 
-    // ถ้าอยากให้ฟังก์ชันนี้ throw ต่อ เพื่อให้ nextStep จับได้ ก็ทำได้:
-    // if (!silent) throw err;
+    const rows = rs.rows || [];
+    if (!rows.length) {
+      throw new Error('ไม่พบหมวดหมู่ใน Case_Master (คอลัมน์ M/N)');
+    }
+
+    renderCategories(rows);
+    setCachedCategories(rows);
+  } catch (err) {
+    console.error('loadCategories error:', err);
+    if (!silent && errorBox) {
+      errorBox.textContent = String(err.message || err);
+      errorBox.classList.remove('hidden');
+    }
   }
 }
 
     function normalizeCategoryRow(row) {
-  // กรณีส่งมาเป็น string เดี่ยวๆ
-  if (typeof row === 'string') {
-    return {
-      th: row,
-      en: '',
-      slug: row
-    };
+    // 1) ถ้าเป็น string เดี่ยว ๆ
+    if (typeof row === 'string') {
+      return { th: row, en: '', slug: row };
+    }
+
+    // 2) ถ้าเป็น array เช่น ["การยุติการจ้าง","Termination","termination"]
+    if (Array.isArray(row)) {
+      return {
+        th:   row[0] || '',
+        en:   row[1] || '',
+        slug: row[2] || row[0] || ''
+      };
+    }
+
+    // 3) ถ้าเป็น object
+    if (row && typeof row === 'object') {
+      const th =
+        row.th ||
+        row.TH ||
+        row.Thai ||
+        row.thai ||
+        row['Category-Thai show'] ||
+        row['Category-Thai'] ||
+        row.CategoryThai ||
+        row.categoryTh ||
+        row.category_th ||
+        '';
+
+      const en =
+        row.en ||
+        row.EN ||
+        row.English ||
+        row.english ||
+        row['Category-Eng show'] ||
+        row['Category-Eng'] ||
+        row.CategoryEng ||
+        row.categoryEn ||
+        row.category_en ||
+        '';
+
+      const slug =
+        row.slug ||
+        row.Slug ||
+        row.id   ||
+        row.ID   ||
+        th       ||
+        '';
+
+      return { th, en, slug };
+    }
+
+    // fallback กันข้อมูลแปลก ๆ
+    return { th: '', en: '', slug: '' };
   }
 
-  // กรณีส่งมาเป็น array เช่น ["การยุติการจ้าง","Termination","termination"]
-  if (Array.isArray(row)) {
-    return {
-      th:   row[0] || '',
-      en:   row[1] || '',
-      slug: row[2] || row[0] || ''
-    };
-  }
-
-  // กรณีเป็น object แต่ key ไม่ตรง (รองรับ key ที่พบบ่อย)
-  const th =
-    row.th ||
-    row.TH ||
-    row.CategoryTH ||
-    row.categoryTh ||
-    row.category_th ||
-    '';
-
-  const en =
-    row.en ||
-    row.EN ||
-    row.CategoryEN ||
-    row.categoryEn ||
-    row.category_en ||
-    '';
-
-  const slug =
-    row.slug ||
-    row.Slug ||
-    row.id ||
-    row.ID ||
-    th ||
-    '';
-
-  return { th, en, slug };
-}
-    
-      function renderCategories(rows) {
+  // วาดการ์ดประเภทการแจ้งลงใน #categoryGrid
+  function renderCategories(rows) {
     const grid = document.getElementById('categoryGrid');
     grid.innerHTML = '';
 
@@ -1276,12 +1281,11 @@ setCachedCategories(rows);
       return;
     }
 
-    // ใช้ palette สีเดียวกับที่ใช้ใน subCategory
     const palette = ['blue','orange','yellow','purple','pink','green','indigo'];
     const frag = document.createDocumentFragment();
 
     rows.forEach((row, index) => {
-      const cat = normalizeCategoryRow(row);    // ให้แน่ใจว่าได้ { th, en, slug }
+      const cat  = normalizeCategoryRow(row);
       const tone = palette[index % palette.length];
 
       const btn = document.createElement('button');
