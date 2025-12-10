@@ -151,9 +151,9 @@ input:focus {
   <button onclick="showPage('history')" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 text-sm sm:text-base">
     History
   </button>
-  <button onclick="showPage('dashboard')" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-800 text-sm sm:text-base">
-    Dashboard
-  </button>
+  <button onclick="openDashboard()" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 text-sm sm:text-base">
+  Dashboard
+</button>
   <button onclick="openHRBP()" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 text-sm sm:text-base">
   🔐 HRBP
 </button>
@@ -182,10 +182,10 @@ input:focus {
           class="w-full px-4 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700">
     History
   </button>
-  <button onclick="showPage('dashboard'); toggleMobileMenu(false)"
-          class="w-full px-4 py-3 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-800">
-    Dashboard
-  </button>
+  <button onclick="openDashboard(); toggleMobileMenu(false)"
+        class="w-full px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">
+  Dashboard
+</button>
   <button onclick="openHRBP(); toggleMobileMenu(false)"
         class="w-full px-4 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700">
   🔐 HRBP
@@ -867,6 +867,66 @@ input:focus {
       </form>
     </div>
   </div>
+    
+    <!-- Dashboard Login Modal (ใช้เงื่อนไขเดียวกับ HRBP แต่โทนสีฟ้า) -->
+<div id="dashboardModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4">
+    <!-- ส่วนไอคอนด้านบน -->
+    <div class="text-center mb-6">
+      <div class="text-center mb-6">
+  <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-50 border-4 border-blue-300 flex items-center justify-center">
+    <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 11c1.657 0 3-1.343 3-3V5a3 3 0 10-6 0v3c0 1.657 1.343 3 3 3z" />
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M5 21a7 7 0 0114 0H5z" />
+    </svg>
+  </div>
+
+  <h3 class="text-xl font-semibold text-gray-900 mb-1">
+    HRBP Dashboard
+  </h3>
+  <p class="text-gray-600 text-sm">
+    เข้าสู่ระบบ Dashboard สำหรับ HRBP
+  </p>
+</div>
+
+    <!-- ฟอร์มกรอกรหัส HRBP -->
+    <form onsubmit="verifyDashboardAccess(event)" class="space-y-4">
+      <div>
+        <label for="dashboardHrbpId" class="block text-sm font-semibold text-gray-700 mb-2">
+          รหัสพนักงาน HRBP
+        </label>
+        <input
+          type="text"
+          id="dashboardHrbpId"
+          class="w-full px-4 py-3 border border-blue-200 rounded-xl text-base text-center
+                 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="กรอกรหัสพนักงาน HRBP"
+          required
+        />
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button
+          type="button"
+          onclick="closeDashboardModal()"
+          class="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50"
+        >
+          ยกเลิก
+        </button>
+        <button
+          type="submit"
+          class="flex-1 px-4 py-3 rounded-xl text-sm font-semibold text-white
+                 bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg"
+        >
+          เข้าสู่ระบบ
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 
   <!-- Case Detail Modal (demo) -->
   <div id="caseModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -1069,48 +1129,72 @@ function showPage(page) {
     grid.appendChild(frag);
   }
     
-    // ===== Dynamic Categories from Case_Master M/N =====
-    async function loadCategories(opts = {}){
+// ===== Dynamic Categories from Case_Master M/N =====
+async function loadCategories(opts = {}){
+
   const silent = !!opts.silent;
   const grid = document.getElementById('categoryGrid');
   const errorBox = document.getElementById('categoryError');
 
-  if(!silent){
-    // ไม่มีข้อความ loader แล้ว: ซ่อน error อย่างเดียว
+  // ---------- จัดการ UI ตอนเริ่มโหลด ----------
+  if (!silent) {
+    // ซ่อนข้อความ error เก่า
     errorBox.classList.add('hidden');
-    // ถ้าอยากมี skeleton ตอนไม่ silent คงไว้ได้:
+    // แสดง skeleton การ์ดว่าง ๆ ขณะรอโหลด
     renderCategorySkeleton();
   }
 
+  // ---------- ใช้ cache ถ้ามี ----------
   const cached = getCachedCategories();
   if (cached && cached.length) {
     renderCategories(cached);
-    // ไม่มีอะไรต้องซ่อน เพราะเราไม่ใช้ข้อความ loader แล้ว
-    if (silent) {
-      // silent mode ก็ไม่ต้องทำอะไรเพิ่ม
-    }
+    // ถ้าโหลดแบบเงียบ ๆ (silent) เราแค่โชว์ข้อมูลจาก cache ไม่ต้องทำอะไรเพิ่ม
   }
 
+  // ---------- เรียก Google Apps Script พร้อม timeout นานขึ้น ----------
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  // *** เปลี่ยนจาก 5000 เป็น 15000 (15 วินาที) หรือจะเอา timeout ออกก็ได้ ***
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-  try{
-    const url = API_URL + '?' + new URLSearchParams({ action:'categories' }).toString();
-    const res = await fetch(url, { method:'GET', signal: controller.signal, cache:'no-cache' });
+  try {
+    const url = API_URL + '?' + new URLSearchParams({ action: 'categories' }).toString();
+
+    const res = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      cache: 'no-cache'
+    });
+
     clearTimeout(timeoutId);
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
     const rs = await res.json();
-    if(!rs.ok) throw new Error(rs.error || 'โหลดหมวดหมู่ไม่สำเร็จ');
+    if (!rs.ok) {
+      throw new Error(rs.error || 'โหลดหมวดหมู่ไม่สำเร็จ');
+    }
 
     const rows = rs.rows || [];
-    if(!rows.length) throw new Error('ไม่พบหมวดหมู่ใน Case_Master (คอลัมน์ M/N)');
+    if (!rows.length) {
+      throw new Error('ไม่พบหมวดหมู่ใน Case_Master (คอลัมน์ M/N)');
+    }
 
+    // ได้ข้อมูลแล้ว → วาดการ์ดหมวดหมู่ + เก็บ cache
     renderCategories(rows);
     setCachedCategories(rows);
-  }catch(err){
+
+  } catch (err) {
     clearTimeout(timeoutId);
-    if(!silent){
-      errorBox.textContent = (err.name==='AbortError') ? 'การเชื่อมต่อช้า โปรดลองใหม่' : String(err.message || err);
+
+    if (!silent) {
+      // ถ้าเป็น AbortError แสดงว่าตัดที่ timeout
+      if (err.name === 'AbortError') {
+        errorBox.textContent = 'การเชื่อมต่อช้า โปรดลองใหม่';
+      } else {
+        errorBox.textContent = String(err.message || err);
+      }
       errorBox.classList.remove('hidden');
     }
   }
@@ -1122,14 +1206,34 @@ function showPage(page) {
         .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
     
-    function showLoading(text='กำลังโหลด...'){
-  const m = document.getElementById('loadingModal');
-  const t = document.getElementById('loadingText');
-  if(t) t.textContent = text;
-  m.classList.remove('hidden');
+    // ===== Loading Popup (ใช้ร่วมทุกหน้า) =====
+function showLoading(text) {
+  const modal = document.getElementById('loadingModal');
+  const label = document.getElementById('loadingText');
+
+  if (!modal) {
+    console.warn('⚠️ ไม่พบ #loadingModal ใน DOM');
+    // กันเงียบ: ถ้า modal หาย จะใช้ alert แทน
+    if (text) {
+      alert(text);
+    }
+    return;
+  }
+
+  if (label) {
+    label.textContent = text || 'กำลังโหลด...';
+  }
+
+  console.log('🔄 showLoading:', label ? label.textContent : text);
+  modal.classList.remove('hidden');
 }
-function hideLoading(){
-  document.getElementById('loadingModal').classList.add('hidden');
+
+function hideLoading() {
+  const modal = document.getElementById('loadingModal');
+  if (!modal) return;
+
+  console.log('✅ hideLoading');
+  modal.classList.add('hidden');
 }
   async function loadSubCategories(catTH, opts = {}) {
   const silent = !!opts.silent;
@@ -1137,7 +1241,7 @@ function hideLoading(){
   container.innerHTML = ''; // เคลียร์เดิมก่อน
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try{
     // เรียก action=subcategories โดยส่ง cat=ชื่อหมวดภาษาไทย
@@ -1677,15 +1781,10 @@ const Comment = detailText;
   showPage('report');
 }
 
-    // ===== HRBP login & dashboard =====
+    // ===== HRBP Login Modal (เดิม) =====
 function showHRBPLogin() {
-  // เคลียร์ค่าที่กรอก HRBP ID ทุกครั้งก่อนแสดง Modal
   const input = document.getElementById('hrbpId');
-  if (input) {
-    input.value = '';
-  }
-
-  // แสดงกล่อง Login HRBP
+  if (input) input.value = '';
   document.getElementById('hrbpModal').classList.remove('hidden');
 }
 
@@ -1693,12 +1792,14 @@ function closeHRBPModal() {
   document.getElementById('hrbpModal').classList.add('hidden');
 }
 
-/** ✅ ตรวจรหัส HRBP จากชีต HRBP ผ่าน Apps Script (action=hrbp-login) */
+/** ✅ ตรวจรหัส HRBP จากชีต HRBP ผ่าน Apps Script (action=hrbp-login)
+ *  ใช้สำหรับปุ่ม HRBP Monitor (หน้าจัดการเคส)
+ */
 async function verifyHRBP(e) {
   e.preventDefault();
 
   const input = document.getElementById('hrbpId');
-  const id    = input.value.trim();   // ใช้ EMP ID จริงตามคอลัมน์ A
+  const id    = input ? input.value.trim() : '';
 
   if (!id) {
     alert('กรุณากรอกรหัสพนักงาน HRBP');
@@ -1708,7 +1809,7 @@ async function verifyHRBP(e) {
   try {
     showLoading('กำลังตรวจสอบรหัส HRBP...');
 
-    // เรียก Apps Script: ไปที่ handleHRBPLogin_(e)
+    // เรียก Apps Script: handleHRBPLogin_(e)
     const rs = await apiGet({ action: 'hrbp-login', hrbpId: id });
 
     hideLoading();
@@ -1719,8 +1820,8 @@ async function verifyHRBP(e) {
     }
 
     // เก็บข้อมูล HRBP ที่ล็อกอิน { id, name, email }
-    currentHRBP     = rs.data;
-    isHRBPLoggedIn  = true;
+    currentHRBP    = rs.data;
+    isHRBPLoggedIn = true;
 
     // อัปเดตหัวข้อความในหน้า HRBP
     const nameEl = document.getElementById('hrbpHeaderName');
@@ -1730,10 +1831,8 @@ async function verifyHRBP(e) {
 
     closeHRBPModal();
 
-    // เปิดหน้า HRBP
+    // เปิดหน้า HRBP และโหลดเคส
     showPage('hrbp');
-
-    // ดึงรายการเคสที่ HRBP นี้รับผิดชอบ
     await loadHRBPCases(currentHRBP.id);
 
   } catch (err) {
@@ -1742,23 +1841,105 @@ async function verifyHRBP(e) {
     alert('เกิดข้อผิดพลาดในการตรวจสอบรหัส HRBP\n' + (err.message || err));
   }
 }
-    
-    // เรียกจากปุ่มเมนู HRBP
+
+// เรียกจากปุ่มเมนู HRBP
 function openHRBP() {
   if (isHRBPLoggedIn && currentHRBP) {
-    // ถ้าล็อกอินแล้ว → เปิดหน้า HRBP และโหลดเคส
     showPage('hrbp');
     loadHRBPCases(currentHRBP.id);
   } else {
-    // ยังไม่ล็อกอิน → แสดง modal ให้กรอกรหัส
     showHRBPLogin();
   }
 }
 
-// ออกจากระบบ HRBP
+/* ===== Dashboard Login (ใช้เงื่อนไขเดียวกับ HRBP) ===== */
+
+// เปิด Dashboard Login Modal
+function showDashboardLogin() {
+  const input = document.getElementById('dashboardHrbpId');
+  if (input) input.value = '';
+  const modal = document.getElementById('dashboardModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+// ปิด Dashboard Login Modal
+function closeDashboardModal() {
+  const modal = document.getElementById('dashboardModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+/** ✅ ตรวจสิทธิ์เข้า Dashboard
+ *  ใช้ action=hrbp-login เหมือน verifyHRBP เลย
+ */
+async function verifyDashboardAccess(e) {
+  e.preventDefault();
+
+  const input = document.getElementById('dashboardHrbpId');
+  const id    = input ? input.value.trim() : '';
+
+  if (!id) {
+    alert('กรุณากรอกรหัสพนักงาน HRBP');
+    return;
+  }
+
+  try {
+    showLoading('กำลังตรวจสอบรหัส HRBP...');
+
+    const rs = await apiGet({ action: 'hrbp-login', hrbpId: id });
+
+    hideLoading();
+
+    if (!rs.ok || !rs.data) {
+      alert(rs.error || 'ไม่พบรหัส HRBP นี้ในระบบ');
+      return;
+    }
+
+    // เก็บสถานะ HRBP เหมือนกัน
+    currentHRBP    = rs.data;
+    isHRBPLoggedIn = true;
+
+    // อัปเดตหัวหน้า HRBP Page (เผื่อสลับไปใช้)
+    const nameEl = document.getElementById('hrbpHeaderName');
+    const mailEl = document.getElementById('hrbpHeaderEmail');
+    if (nameEl) nameEl.textContent = currentHRBP.name || currentHRBP.id;
+    if (mailEl) mailEl.textContent = currentHRBP.email || '';
+
+    closeDashboardModal();
+
+    // เปิดหน้า Dashboard
+    showPage('dashboard');
+
+    // ถ้ามีฟังก์ชันโหลดข้อมูล Dashboard ตาม HRBP สามารถเรียกที่นี่
+    if (typeof loadDashboardByHRBP === 'function') {
+      loadDashboardByHRBP(currentHRBP.id);
+    }
+
+  } catch (err) {
+    hideLoading();
+    console.error('verifyDashboardAccess error', err);
+    alert('เกิดข้อผิดพลาดในการตรวจสอบรหัส HRBP\n' + (err.message || err));
+  }
+}
+
+/** ✅ ฟังก์ชันหลักที่เมนู Dashboard เรียกใช้
+ *  - ถ้าเคยล็อกอิน HRBP แล้ว → เปิด Dashboard ทันที
+ *  - ถ้ายัง → แสดง modal ให้กรอกรหัส
+ */
+function openDashboard() {
+  if (isHRBPLoggedIn && currentHRBP) {
+    showPage('dashboard');
+    if (typeof loadDashboardByHRBP === 'function') {
+      loadDashboardByHRBP(currentHRBP.id);
+    }
+  } else {
+    showDashboardLogin();
+  }
+}
+
+// ออกจากระบบ HRBP (ใช้ร่วมกันทั้ง HRBP Monitor และ Dashboard)
 function logoutHRBP() {
   isHRBPLoggedIn = false;
-  currentHRBP = null;
+  currentHRBP    = null;
 
   // เคลียร์ข้อความบนหัว HRBP Page
   const nameEl = document.getElementById('hrbpHeaderName');
@@ -1772,16 +1953,16 @@ function logoutHRBP() {
   // กลับไปหน้าแจ้งเหตุการณ์
   showPage('report');
 }
+
     
     function viewFactoryDetails(factoryId){ showHRBPLogin(); window.selectedFactory=factoryId; }
 
     // ✅ เวอร์ชันใหม่ – แสดง loading popup ระหว่างตรวจสอบ + โหลดประวัติ
 async function verifyHistoryAccess(e) {
-
   e.preventDefault();
 
   const input = document.getElementById('historyEmployeeId');
-  const empId = (input.value || '').trim();
+  const empId = (input && input.value ? input.value : '').trim();
 
   if (!empId) {
     alert('กรุณากรอกรหัสพนักงาน');
@@ -1789,46 +1970,46 @@ async function verifyHistoryAccess(e) {
   }
 
   try {
-
-    // แสดง popup ขณะตรวจสอบ / โหลดข้อมูล
+    // แสดง popup ระหว่างตรวจสอบ
     showLoading('กำลังตรวจสอบรหัสพนักงาน...');
 
-    // เรียก Google Script เพื่อเช็กข้อมูลพนักงาน
+    // เรียก Script เพื่อเช็คพนักงาน
     const url = API_URL + '?action=employee&empId=' + encodeURIComponent(empId);
-    const res = await fetch(url, { method: 'GET' });
+    console.log('🔍 verifyHistoryAccess →', url);
 
+    const res = await fetch(url, { method: 'GET' });
     if (!res.ok) {
       throw new Error('HTTP ' + res.status);
     }
 
     const data = await res.json();
+    console.log('📦 employee data:', data);
 
     if (!data.ok || !data.data) {
       alert(data.error || 'รหัสพนักงานไม่ถูกต้อง กรุณาลองใหม่');
       return;
     }
 
-    // เก็บสถานะพนักงาน
+    // เก็บสถานะพนักงานที่ล็อกอินแล้ว
     isHistoryLoggedIn = true;
     historyEmp = data.data;
 
-    // ซ่อนหน้า login และแสดงส่วนประวัติ
-    document.getElementById('historyLoginSection').classList.add('hidden');
-    document.getElementById('historyContent').classList.remove('hidden');
+    // ซ่อนส่วน login และเปิดส่วนประวัติ
+    const loginBox = document.getElementById('historyLoginSection');
+    const contentBox = document.getElementById('historyContent');
 
-    // โหลดเคสของพนักงานคนนี้ (ยังมี popup แสดงอยู่ระหว่างโหลด)
+    if (loginBox) loginBox.classList.add('hidden');
+    if (contentBox) contentBox.classList.remove('hidden');
+
+    // โหลดเคส (ตอนนี้ยังมี popup แสดงอยู่)
     await loadHistoryCases(empId);
 
   } catch (err) {
-
-    console.error(err);
+    console.error('❌ verifyHistoryAccess error:', err);
     alert('เกิดข้อผิดพลาดในการตรวจสอบรหัสพนักงาน');
-
   } finally {
-
-    // ปิด popup ไม่ว่าจะสำเร็จหรือ error
+    // ปิด popup ไม่ว่าผลจะสำเร็จหรือ error
     hideLoading();
-
   }
 }
 
