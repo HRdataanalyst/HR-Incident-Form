@@ -1125,37 +1125,6 @@ let historyFilterStatus = 'ALL';
     }
     grid.appendChild(frag);
   }
-
-  async function selectCategory(cat) {
-  // ปรับให้แน่ใจว่า cat อยู่ในรูปแบบ normalize แล้ว
-  const norm = normalizeCategoryRow(cat);
-
-  selectedCategory   = String(norm.slug || '').trim();
-  selectedCategoryTH = String(norm.th   || '').trim();
-  selectedCategoryEN = String(norm.en   || '').trim();
-
-  showLoading('กำลังโหลดประเภทย่อย...');
-
-  const subs = await loadSubCategories(selectedCategoryTH, { silent:true });
-
-  hideLoading();
-
-  if (subs && subs.length){
-    document.getElementById('subCategoryTitle').textContent =
-      `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
-
-    document.getElementById('categoryStep').classList.add('hidden');
-    document.getElementById('subCategoryStep').classList.remove('hidden');
-    document.getElementById('step2').classList.remove('active');
-    document.getElementById('step2').classList.add('completed');
-    document.getElementById('step3').classList.add('active');
-    currentStep = 3;
-  } else {
-    // ไม่มีประเภทย่อย → ไปล็อกอินพนักงานต่อ
-    selectedSubCategoryName = '';
-    showEmployeeLogin();
-  }
-}
     
     // ===== Dynamic Categories from Case_Master M/N =====
 async function loadCategories(opts = {}){
@@ -1551,16 +1520,16 @@ async function selectCategory(cat) {
   try {
     showLoading('กำลังโหลดหมวดหมู่ย่อย...');
 
-    // ส่งทั้ง TH / EN ไปเผื่ออนาคตจะใช้
+    // ส่งทั้ง TH / EN ไป
     const subs = await loadSubCategories(selectedCategoryTH, selectedCategoryEN);
 
     if (!subs || !subs.length) {
-      // ✅ ถ้าไม่มีประเภทย่อย → แจ้งเตือน แต่ **ไม่** เด้งไปหน้า Login
+      // ถ้าไม่มีประเภทย่อยเลย
       alert('ไม่พบหมวดหมู่ย่อยของประเภทนี้ กรุณาให้ HR ตรวจสอบข้อมูลในชีต Case_Master');
       return;
     }
 
-    // ✅ มีประเภทย่อย → ไป Step หมวดหมู่ย่อย
+    // มีประเภทย่อย → ไป Step หมวดหมู่ย่อย
     goToStep('subCategoryStep', 3);
     renderSubCategoryCards(subs);
 
@@ -1571,7 +1540,6 @@ async function selectCategory(cat) {
     hideLoading();
   }
 }
-
 
     function showSubCategories(category){
       const container = document.getElementById('subCategoryCards');
