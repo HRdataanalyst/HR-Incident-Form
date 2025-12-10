@@ -1286,13 +1286,16 @@ async function loadCategories(opts = {}){
     grid.appendChild(frag);
   }
 
-
-
     function escapeHTML_(s){
-      return String(s || '')
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ✅ ทำ alias ให้ชื่อ escapeHTML ใช้ได้ด้วย
+function escapeHTML(s) {
+  return escapeHTML_(s);
+}
     
     function showLoading(text='กำลังโหลด...'){
   const m = document.getElementById('loadingModal');
@@ -1485,21 +1488,33 @@ function renderSubCategoryCards() {
 
   if (!subCategories || !subCategories.length) {
     container.innerHTML =
-      '<p class="text-center text-gray-500">ไม่พบประเภทย่อยสำหรับประเภทนี้</p>';
+      '<p class="text-center text-gray-500">ไม่พบประเภทย่อย</p>';
     return;
   }
 
-  subCategories.forEach(sc => {
+  // layout 2 คอลัมน์ ใกล้เคียงหน้าประเภทการแจ้ง
+  container.className = 'grid grid-cols-2 gap-3 max-w-3xl mx-auto';
+
+  // พาเลตสีเดียวกับหน้าประเภทการแจ้ง
+  const palette = ['blue', 'orange', 'yellow', 'purple', 'pink', 'green', 'indigo'];
+
+  subCategories.forEach((sc, index) => {
+    const labelTH = escapeHTML_(sc.th || sc.name || '');
+    const tone = palette[index % palette.length];
+
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className =
-      'w-full p-4 rounded-2xl bg-white shadow-md hover:shadow-lg transition ' +
-      'border border-gray-100 text-left';
+      `card-hover bg-gradient-to-br from-white to-${tone}-50
+       rounded-2xl shadow-xl p-6 border border-${tone}-100
+       hover:border-${tone}-300 hover:shadow-2xl
+       h-[130px] w-full flex items-center justify-center text-center transition`;
 
-    const label = escapeHTML(sc.th || sc.name || '');
-
+    // โชว์เฉพาะภาษาไทย + อยู่กลางการ์ด
     btn.innerHTML = `
-      <div class="text-base font-semibold">${label}</div>
+      <div>
+        <h3 class="text-base font-semibold text-gray-800">${labelTH}</h3>
+      </div>
     `;
 
     btn.onclick = () => selectSubCategory(sc);
