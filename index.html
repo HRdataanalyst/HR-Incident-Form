@@ -1563,35 +1563,6 @@ async function verifyEmployee(e){
   alert('อัปโหลดไม่สำเร็จ\n' + msg + '\n\n(ถ้าขึ้น AbortError ให้ลองใหม่/เน็ตช้า)');
 }
 
-    function showSubCategories(category){
-      const container = document.getElementById('subCategoryCards');
-      container.innerHTML = '';
-      (subCategories[category]||[]).forEach(sub => {
-        const card = document.createElement('button');
-        card.type = 'button';
-        card.className = 'card-hover bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl p-6 border border-blue-100 hover:border-blue-300 hover:shadow-2xl';
-        card.innerHTML = `<div class="text-center"><div class="text-4xl mb-4">${sub.icon}</div><h3 class="text-lg font-bold text-gray-800 mb-2">${sub.name}</h3><p class="text-sm text-gray-600">${sub.desc}</p></div>`;
-        card.onclick = () => selectSubCategory(sub.id);
-        container.appendChild(card);
-      });
-    }
-    async function selectSubCategory(name){
-  selectedSubCategoryName = name;
-
-  // เปิด popup โหลด
-  showLoading('กำลังโหลดรายละเอียด...');
-  const groups = await loadDetails(selectedCategoryTH, selectedSubCategoryName);
-  hideLoading();
-
-  // แสดงรายละเอียดภายใน Step 3 เดิม (เปลี่ยนการ์ดใน subCategoryCards)
-  renderDetailCards(groups);
-}
-    
-    function selectDetail(name){
-  selectedDetailName = name;
-  showEmployeeLogin();
-}
-
     // ===== Details step =====
    function proceedToDetails() {
   const catLabel = selectedCategoryTH || 'หมวดหมู่';
