@@ -142,18 +142,18 @@ input:focus {
 
    <!-- เมนูสำหรับเดสก์ท็อป (แสดงตั้งแต่ sm ขึ้นไป) -->
 <div id="desktopMenu" class="hidden sm:flex flex-wrap justify-end gap-2 sm:gap-3">
-  <button onclick="showPage('report')" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 text-sm sm:text-base">
-    แจ้งเหตุการณ์
-  </button>
+  <button
+  onclick="resetForm()"
+  class="px-6 py-2.5 rounded-full text-sm font-semibold 
+  bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-2">
+  แจ้งเหตุการณ์
+</button>
   <button onclick="showPage('history')" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 text-sm sm:text-base">
     History
   </button>
-  <button
-  type="button"
-  class="px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-gray-800 hover:bg-gray-900 shadow-sm"
-  onclick="openHRMonitorLogin()">
-  Dashboard
-</button>
+  <button onclick="showPage('dashboard')" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-800 text-sm sm:text-base">
+    Dashboard
+  </button>
   <button onclick="openHRBP()" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 text-sm sm:text-base">
   🔐 HRBP
 </button>
@@ -173,10 +173,11 @@ input:focus {
 
     <!-- แผงเมนูมือถือ (เริ่มต้นซ่อน) -->
 <div id="mobileMenu" class="sm:hidden hidden bg-white border-t shadow-md px-4 py-3 space-y-2">
-  <button onclick="showPage('report'); toggleMobileMenu(false)"
-          class="w-full px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">
-    แจ้งเหตุการณ์
-  </button>
+  <button
+  onclick="resetForm(); toggleMobileMenu(false)"
+  class="w-full text-left px-4 py-2 rounded-lg text-sm font-semibold text-gray-800 hover:bg-gray-100 flex items-center gap-2">
+  แจ้งเหตุการณ์
+</button>
   <button onclick="showPage('history'); toggleMobileMenu(false)"
           class="w-full px-4 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700">
     History
@@ -866,52 +867,6 @@ input:focus {
       </form>
     </div>
   </div>
-    
-    <!-- HR Monitor Login Modal -->
-<div id="hrMonitorLoginModal"
-     class="fixed inset-0 z-40 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
-  <div class="bg-white rounded-3xl shadow-xl w-[90%] max-w-md p-6 sm:p-8 relative">
-    <!-- icon ด้านบน -->
-    <div class="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center mx-auto mb-3">
-      <span class="text-2xl">🛡️</span>
-    </div>
-    <h2 class="text-xl sm:text-2xl font-extrabold text-gray-900 text-center">
-      HR Monitor
-    </h2>
-    <p class="mt-1 text-sm text-gray-500 text-center">
-      เข้าสู่ระบบสำหรับ HR Monitor
-    </p>
-
-    <form class="mt-5 space-y-4" onsubmit="verifyHRMonitorAccess(event)">
-      <div>
-        <label for="hrMonitorEmployeeId" class="block text-sm font-semibold text-gray-700 mb-1">
-          รหัสพนักงาน
-        </label>
-        <input
-          id="hrMonitorEmployeeId"
-          type="text"
-          placeholder="กรอกรหัสพนักงาน"
-          class="w-full px-4 py-3 rounded-2xl border border-gray-300 bg-white
-                 text-sm sm:text-base
-                 focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
-        >
-      </div>
-
-      <div class="flex items-center justify-end gap-3 pt-2">
-        <button type="button"
-                class="px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                onclick="closeHRMonitorLogin()">
-          ยกเลิก
-        </button>
-        <button type="submit"
-                class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 shadow">
-          เข้าสู่ระบบ
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-
 
   <!-- Case Detail Modal (demo) -->
   <div id="caseModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -1008,10 +963,8 @@ let selectedDetailName      = '';
 let currentPage       = 'report';
 let isHRBPLoggedIn    = false;
 let isHistoryLoggedIn = false;
-let isHRMonitorLoggedIn = false;
 
-let currentHRBP = null;
-let currentHRMonitor = null;
+let currentHRBP = null;   // ✅ เก็บข้อมูล HRBP ที่ล็อกอิน (id, name, email)
 
 let historyEmp   = null;
 let historyCases = [];
@@ -1025,30 +978,9 @@ let historyCurrentRows  = [];
 let historyFilterStatus = 'ALL';
 
     // ===== Page router =====
-    function showPage(page) {
-
-  // กันเปิด dashboard ตรง ๆ ถ้ายังไม่ login HR Monitor
-  if (page === 'dashboard' && !isHRMonitorLoggedIn) {
-    openHRMonitorLogin();
-    return;
-  }
-
+function showPage(page) {
+  // จดจำหน้าปัจจุบัน
   currentPage = page;
-
-  // --------- รีเซ็ตค่าของแต่ละหน้า ---------
-  if (page === 'report') {
-    if (typeof resetForm === 'function') {
-      resetForm();
-    }
-  } else if (page === 'history') {
-    if (typeof logoutHistory === 'function') {
-      logoutHistory();
-    }
-  } else if (page === 'dashboard') {
-    // ถ้ามี resetDashboard ในอนาคต ค่อยใส่
-  } else if (page === 'hrbp') {
-    // หน้า HRBP ยังไม่ต้อง reset อะไรพิเศษตอนนี้
-  }
 
   // --------- ซ่อนทุกหน้า ---------
   document.getElementById('reportPage').classList.add('hidden');
@@ -1061,6 +993,11 @@ let historyFilterStatus = 'ALL';
     document.getElementById('reportPage').classList.remove('hidden');
   } else if (page === 'history') {
     document.getElementById('historyPage').classList.remove('hidden');
+
+    // ถ้าต้องการให้ history รีเฟรชทุกครั้งที่เปิด สามารถเรียกที่นี่ได้
+    if (typeof logoutHistory === 'function') {
+      logoutHistory();
+    }
   } else if (page === 'dashboard') {
     document.getElementById('dashboardPage').classList.remove('hidden');
   } else if (page === 'hrbp') {
@@ -1833,75 +1770,6 @@ function logoutHRBP() {
   // กลับไปหน้าแจ้งเหตุการณ์
   showPage('report');
 }
-    
-    function openHRMonitorLogin() {
-  const modal = document.getElementById('hrMonitorLoginModal');
-  const input = document.getElementById('hrMonitorEmployeeId');
-
-  if (modal) {
-    modal.classList.remove('hidden');
-  }
-  if (input) {
-    input.value = '';
-    setTimeout(() => input.focus(), 100);
-  }
-}
-
-function closeHRMonitorLogin() {
-  const modal = document.getElementById('hrMonitorLoginModal');
-  if (modal) {
-    modal.classList.add('hidden');
-  }
-}
-    async function verifyHRMonitorAccess(e) {
-  e.preventDefault();
-
-  const input = document.getElementById('hrMonitorEmployeeId');
-  const empId = (input?.value || '').trim();
-
-  if (!empId) {
-    alert('กรุณากรอกรหัสพนักงาน');
-    return;
-  }
-
-  try {
-    // ใช้ popup กำลังตรวจสอบ (เหมือน HRBP)
-    showLoading('กำลังตรวจสอบรหัสพนักงาน...');
-
-    const url = API_URL + '?action=employee&empId=' + encodeURIComponent(empId);
-    const res = await fetch(url, { method: 'GET' });
-    if (!res.ok) {
-      throw new Error('HTTP ' + res.status);
-    }
-
-    const data = await res.json();
-    if (!data.ok || !data.data) {
-      alert(data.error || 'รหัสพนักงานไม่ถูกต้อง กรุณาลองใหม่');
-      return;
-    }
-
-    // login สำเร็จ
-    isHRMonitorLoggedIn = true;
-    currentHRMonitor    = data.data;
-
-    closeHRMonitorLogin();
-
-    // ถ้ามีส่วน header บน Dashboard อยากโชว์ชื่อก็ทำเพิ่มได้ เช่น
-    // document.getElementById('dashboardHeaderName').textContent = currentHRMonitor.EmpName || empId;
-
-    // แสดงหน้า Dashboard
-    showPage('dashboard');
-
-  } catch (err) {
-    console.error(err);
-    alert('เกิดข้อผิดพลาดในการตรวจสอบรหัสพนักงาน');
-  } finally {
-    hideLoading();
-  }
-}
-
-
-    
     
     function viewFactoryDetails(factoryId){ showHRBPLogin(); window.selectedFactory=factoryId; }
 
