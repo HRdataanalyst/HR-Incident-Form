@@ -1277,23 +1277,58 @@ const timeoutId = setTimeout(() => controller.abort(), 15000);
     
    async function loadDetails(catTH, subTH){
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  // เพิ่มเวลาเป็น 15 วินาที เผื่อ Apps Script ช้า
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
   try{
     const url = API_URL + '?' + new URLSearchParams({
       action:'details',
       cat: catTH,
       sub: subTH
     }).toString();
-    const res = await fetch(url, { method:'GET', signal: controller.signal, cache:'no-cache' });
+
+    const res = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      cache: 'no-cache'
+    });
+
     clearTimeout(timeoutId);
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
     const rs = await res.json();
-    if(!rs.ok) throw new Error(rs.error || 'โหลดรายละเอียดไม่สำเร็จ');
-    return rs.rows || {detail1:[],detail2:[],detail3:[],detail4:[],detail5:[]};
-  }catch(err){
+    if (!rs.ok) {
+      throw new Error(rs.error || 'โหลดรายละเอียดไม่สำเร็จ');
+    }
+
+    return rs.rows || {
+      detail1: [],
+      detail2: [],
+      detail3: [],
+      detail4: [],
+      detail5: []
+    };
+
+  } catch (err) {
     clearTimeout(timeoutId);
-    console.error(err);
-    return {detail1:[],detail2:[],detail3:[],detail4:[],detail5:[]};
+
+    // ถ้าเป็น AbortError เพราะ timeout → ขึ้นเป็น warning เฉย ๆ ไม่เอา error แดง
+    if (err.name === 'AbortError') {
+      console.warn('โหลดรายละเอียดถูกยกเลิก (timeout เกิน 15 วินาที)');
+    } else {
+      console.error(err);
+    }
+
+    return {
+      detail1: [],
+      detail2: [],
+      detail3: [],
+      detail4: [],
+      detail5: []
+    };
   }
 }
 
