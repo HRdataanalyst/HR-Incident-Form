@@ -1214,17 +1214,13 @@ async function loadCategories(opts = {}){
         .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
     
-    // ===== Loading Popup (ใช้ร่วมทุกหน้า) =====
+// ===== Loading Popup (ใช้ร่วมทุกหน้า) =====
 function showLoading(text) {
   const modal = document.getElementById('loadingModal');
   const label = document.getElementById('loadingText');
 
   if (!modal) {
-    console.warn('⚠️ ไม่พบ #loadingModal ใน DOM');
-    // กันเงียบ: ถ้า modal หาย จะใช้ alert แทน
-    if (text) {
-      alert(text);
-    }
+    console.warn('showLoading: not found #loadingModal');
     return;
   }
 
@@ -1232,17 +1228,44 @@ function showLoading(text) {
     label.textContent = text || 'กำลังโหลด...';
   }
 
-  console.log('🔄 showLoading:', label ? label.textContent : text);
+  // บังคับให้แสดงแน่นอน
   modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  // กันกรณี class จากที่อื่นมาทับ
+  modal.style.display = 'flex';
+  modal.style.opacity = '1';
+
+  // ถ้าอยากล็อกการเลื่อนหน้าจอระหว่างโหลด
+  document.body.style.overflow = 'hidden';
 }
 
 function hideLoading() {
   const modal = document.getElementById('loadingModal');
-  if (!modal) return;
+  if (!modal) {
+    console.warn('hideLoading: not found #loadingModal');
+    return;
+  }
 
-  console.log('✅ hideLoading');
+  // ซ่อน popup
   modal.classList.add('hidden');
+  modal.classList.remove('flex');
+
+  // บังคับ display:none กัน CSS ทับ
+  modal.style.display = 'none';
+
+  // คืน scroll ปกติ
+  document.body.style.overflow = '';
 }
+
+function hideLoading() {
+  const modal = document.getElementById("loadingModal");
+
+  // ซ่อน modal
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+}
+    
   async function loadSubCategories(catTH, opts = {}) {
   const silent = !!opts.silent;
   const container = document.getElementById('subCategoryCards');
@@ -3342,16 +3365,35 @@ function toggleMobileMenu(nextState){
     
   </script>
   <!-- Loading Modal -->
-<!-- Loading Modal (no blur, no dim, normal text) -->
-<div id="loadingModal" class="fixed inset-0 z-[60] hidden">
-  <div class="w-full h-full flex items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-2xl px-6 py-5 flex items-center gap-3">
-      <svg class="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" aria-label="กำลังโหลด">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4"></path>
-      </svg>
-      <span id="loadingText" class="text-gray-800">กำลังโหลดประเภทการแจ้ง...</span>
-    </div>
+<div
+  id="loadingModal"
+  class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/40 backdrop-blur-sm"
+>
+  <div class="bg-white rounded-2xl shadow-xl px-6 py-5 flex items-center gap-3">
+    <svg
+      class="w-6 h-6 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-label="loading"
+    >
+      <circle
+        class="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        stroke-width="4"
+      ></circle>
+      <path
+        class="opacity-75"
+        d="M4 12a8 8 0 018-8"
+        stroke="currentColor"
+        stroke-width="4"
+      ></path>
+    </svg>
+    <span id="loadingText" class="text-gray-800 text-base font-medium">
+      กำลังโหลด...
+    </span>
   </div>
 </div>
   
