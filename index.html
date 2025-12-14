@@ -728,20 +728,20 @@ input:focus {
       </div>
     </div> <!-- 🔥 ปิด grid การ์ดตรงนี้ ทำให้ด้านล่างไม่อยู่ใน grid แล้ว -->
 
-    <!-- กล่องสถิติตามโรงงาน/พื้นที่ (เต็มความกว้าง) -->
+    <!-- กล่องสถิติตามโรงงาน/พื้นที่ (ใช้ข้อมูลจริงจากชีต Dashboard) -->
     <div class="bg-white rounded-3xl shadow-2xl p-10 border border-gray-100">
       <div class="text-center mb-8">
         <h3 class="text-2xl font-bold text-gray-800">สถิติตามโรงงาน/พื้นที่</h3>
-        <p class="text-gray-600">คลิกเพื่อดูรายละเอียดแต่ละโรงงาน (เดโม)</p>
+        <p class="text-gray-600">คลิกเพื่อดูรายละเอียดแต่ละโรงงาน</p>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <button onclick="viewFactoryDetails('ladkrabang')" class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200 hover:shadow-lg">ลาดกระบัง • 9</button>
-        <button onclick="viewFactoryDetails('bangna')" class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200 hover:shadow-lg">บางนา • 6</button>
-        <button onclick="viewFactoryDetails('samutprakarn')" class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200 hover:shadow-lg">สมุทรปราการ • 4</button>
-        <button onclick="viewFactoryDetails('chonburi')" class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200 hover:shadow-lg">ชลบุรี • 3</button>
-        <button onclick="viewFactoryDetails('headquarters')" class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 hover:shadow-lg">สำนักงานใหญ่ • 2</button>
-      </div>
+      <!-- JS จะสร้างปุ่มจากข้อมูล factories -->
+      <div
+  id="factoryStatsContainer"
+  class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 justify-items-center"
+>
+  <!-- dynamic items -->
+</div>
     </div>
   </section>
     
@@ -2051,10 +2051,61 @@ async function loadDashboardByHRBP(hrbpId) {
       el.textContent = num;
     }
 
-    setDashText('dashTotalReports',  data.total);
-    setDashText('dashHighPriority',  data.high);
-    setDashText('dashMediumPriority',data.medium);
-    setDashText('dashLowPriority',   data.low);
+    setDashText('dashTotalReports',   data.total);
+    setDashText('dashHighPriority',   data.high);
+    setDashText('dashMediumPriority', data.medium);
+    setDashText('dashLowPriority',    data.low);
+
+    // ===== แสดงสถิติตามโรงงาน/พื้นที่ =====
+    const factoryContainer = document.getElementById('factoryStatsContainer');
+
+    if (factoryContainer) {
+      // ล้างของเก่า
+      factoryContainer.innerHTML = '';
+
+      let factories = Array.isArray(data.factories) ? data.factories : [];
+
+// เรียงข้อมูลจากมาก → น้อยตามจำนวน Sum-Format
+factories.sort((a, b) => b.count - a.count);
+
+      if (!factories.length) {
+        factoryContainer.innerHTML =
+          '<p class="text-gray-500 text-center w-full">ยังไม่มีข้อมูลสถิติตามโรงงาน</p>';
+      } else {
+        // เซ็ตสีแบบวนลูปให้ดูใกล้เคียงดีไซน์เดิม
+        const colorClasses = [
+          'bg-blue-50  border-blue-200  text-blue-800',
+          'bg-green-50 border-green-200 text-green-800',
+          'bg-purple-50 border-purple-200 text-purple-800',
+          'bg-orange-50 border-orange-200 text-orange-800',
+          'bg-gray-50  border-gray-200 text-gray-800'
+        ];
+
+        factories.forEach((item, index) => {
+          const colorClass = colorClasses[index % colorClasses.length];
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className =
+  'w-48 h-16 rounded-2xl border shadow-sm hover:shadow-md transition flex flex-col items-center justify-center text-center ' +
+  colorClass;
+
+          // ถ้าคุณมีฟังก์ชัน viewFactoryDetails อยู่แล้วจะใช้ต่อได้เลย
+          btn.onclick = function () {
+            if (typeof viewFactoryDetails === 'function') {
+              viewFactoryDetails(item.label);
+            }
+          };
+
+          btn.innerHTML = `
+  <span>${item.label || '-'}</span>
+  <span class="font-bold">${item.count || 0}</span>
+`;
+
+          factoryContainer.appendChild(btn);
+        });
+      }
+    }
 
   } catch (err) {
     hideLoading();
