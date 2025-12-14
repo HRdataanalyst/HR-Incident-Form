@@ -2013,10 +2013,8 @@ function openDashboard() {
     // ===== Dashboard Summary (ดึงจากชีต Dashboard!A2:D2) =====
 async function loadDashboardSummary() {
   try {
-    // ถ้าอยากให้มี popup ตอนโหลด ใช้ได้เลย
     showLoading('กำลังโหลดข้อมูล Dashboard...');
 
-    // เรียก Apps Script: action=dashboard-summary
     const rs = await apiGet({ action: 'dashboard-summary' });
 
     hideLoading();
@@ -2026,23 +2024,50 @@ async function loadDashboardSummary() {
       return;
     }
 
-    const d = rs.data;
+    const d = rs.data || {};
 
-    // helper ตั้งค่า text ให้ element ถ้ามี
-    const setText = (id, val) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = (val !== undefined && val !== null && val !== '') ? val : '-';
+    // helper: คืนค่าตัวแรกที่ไม่เป็น null/undefined/'' จากหลาย ๆ key
+    const pick = (...keys) => {
+      for (const k of keys) {
+        if (k === null || k === undefined) continue;
+        if (typeof k === 'string' && k.trim() === '') continue;
+        return k;
+      }
+      return '-';
     };
 
-    setText('dashTotalReports', d.totalReports);
-    setText('dashCritical',     d.critical);
-    setText('dashHigh',         d.high);
-    setText('dashMedium',       d.medium);
+    const setText = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = pick(val);
+    };
+
+    // A: Total Reports
+    setText(
+      'dashTotalReports',
+      pick(d.totalReports, d.total, d.TotalReports, d['Total Reports'])
+    );
+
+    // B: ด่วน (High Priority)
+    setText(
+      'dashCritical',
+      pick(d.critical, d.high, d.High)
+    );
+
+    // C: ปานกลาง (Medium Priority)
+    setText(
+      'dashHigh',
+      pick(d.medium, d.Medium)
+    );
+
+    // D: ไม่เร่งด่วน (Low Priority)
+    setText(
+      'dashMedium',
+      pick(d.low, d.Low)
+    );
 
   } catch (err) {
     hideLoading();
     console.error('loadDashboardSummary error:', err);
-    // ไม่ต้อง alert ก็ได้ ให้แค่ log เฉย ๆ ถ้าข้อมูลดึงไม่ได้
   }
 }
   
