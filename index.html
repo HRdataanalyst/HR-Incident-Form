@@ -212,6 +212,33 @@ input:focus {
                          rounded-full bg-gray-300 flex items-center justify-center font-bold text-base sm:text-lg">4</div>
   </div>
 </div>
+    
+    <!-- ✅ Loading Overlay (Popup) -->
+<div id="loadingOverlay" class="hidden fixed inset-0 z-[9999]">
+  <div class="absolute inset-0 bg-black/40"></div>
+
+  <div class="relative min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md p-6">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-transparent flex items-center justify-center">
+  <svg class="w-7 h-7 text-blue-600 animate-spin"
+     xmlns="http://www.w3.org/2000/svg"
+     fill="none"
+     viewBox="0 0 24 24">
+    <path class="opacity-25" fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20z"></path>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"></path>
+  </svg>
+</div>
+
+        <div>
+          <div class="text-lg font-bold text-gray-800" id="loadingText">กำลังโหลดข้อมูล...</div>
+          <div class="text-sm text-gray-500">กรุณารอสักครู่</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
     <!-- Step 1: Intro -->
     <section id="introStep" class="fade-in relative">
@@ -244,7 +271,7 @@ input:focus {
 
         <button
           type="button"
-  onclick="nextStep()"
+  onclick="startIncident()"
   class="group relative bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold py-4 px-8 rounded-2xl shadow-xl
          hover:shadow-2xl transition-all duration-300 text-lg transform hover:scale-105 hover:-translate-y-1
          w-full sm:w-auto mt-6 sm:mt-8">
@@ -1728,6 +1755,30 @@ function toggleTimeEdit(){
   btn.textContent = el.readOnly ? 'แก้ไข' : 'บันทึก';
 }
 
+    function showLoading(msg = 'กำลังโหลดข้อมูล...') {
+  const ov = document.getElementById('loadingOverlay');
+  const tx = document.getElementById('loadingText');
+  if (tx) tx.textContent = msg;
+  if (ov) ov.classList.remove('hidden');
+}
+
+function hideLoading() {
+  const ov = document.getElementById('loadingOverlay');
+  if (ov) ov.classList.add('hidden');
+}
+
+// ปุ่มเริ่มต้นแจ้งเหตุการณ์จะเรียกตัวนี้แทน nextStep ตรง ๆ
+async function startIncident() {
+  showLoading('กำลังโหลดข้อมูล...');
+  try {
+    await nextStep(); // ให้ nextStep ไปจัดการโหลด categories และปิด popup ตอนเสร็จ
+  } catch (e) {
+    hideLoading();
+    console.error(e);
+  }
+}
+
+    
     async function nextStep(){
   const ids = ['introStep','categoryStep','subCategoryStep','detailsStep','successStep'];
 
@@ -3628,30 +3679,40 @@ function toggleMobileMenu(nextState){
   class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/40 backdrop-blur-sm"
 >
   <div class="bg-white rounded-2xl shadow-xl px-6 py-5 flex items-center gap-3">
-    <svg
-      class="w-6 h-6 animate-spin"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-label="loading"
-    >
-      <circle
-        class="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        stroke-width="4"
-      ></circle>
-      <path
-        class="opacity-75"
-        d="M4 12a8 8 0 018-8"
-        stroke="currentColor"
-        stroke-width="4"
-      ></path>
-    </svg>
-    <span id="loadingText" class="text-gray-800 text-base font-medium">
-      กำลังโหลด...
-    </span>
+    
+    <!-- ✅ ทำพื้นหลังของไอคอนให้โปร่งใส (ไม่มีม่วงแล้ว) -->
+    <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-transparent">
+      <!-- ✅ spinner ยังหมุนเหมือนเดิม -->
+      <svg
+        class="w-6 h-6 animate-spin text-purple-600"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-label="loading"
+      >
+        <circle
+          class="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="4"
+        ></circle>
+        <path
+          class="opacity-75"
+          d="M4 12a8 8 0 018-8"
+          stroke="currentColor"
+          stroke-width="4"
+        ></path>
+      </svg>
+    </div>
+
+    <div class="flex flex-col">
+      <span id="loadingText" class="text-gray-900 text-base font-semibold leading-tight">
+        กำลังโหลด...
+      </span>
+      <span class="text-gray-500 text-sm leading-tight">กรุณารอสักครู่</span>
+    </div>
+
   </div>
 </div>
   
