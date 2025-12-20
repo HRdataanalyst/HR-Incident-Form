@@ -1670,6 +1670,70 @@ function getStaticSubCategoryRows(catTH) {
   const list = SUBCATEGORY_STATIC[String(catTH || '').trim()] || [];
   return list.map(name => ({ name }));
 }
+    
+    // ===== STATIC DETAILS (ไม่โหลดจาก Google Script) =====
+// โครงสร้าง: DETAIL_STATIC[หมวดหลักภาษาไทย][ประเภทย่อย] = [รายละเอียด...]
+const DETAIL_STATIC = {
+  "อุบัติเหตุ": {
+    "ไฟ": ["ไฟดูด", "ไฟไหม้", "อุปกรณ์ไฟฟ้าชำรุด"],
+    "ลื่นล้ม": ["พื้นเปียก", "สภาพพื้นไม่ปลอดภัย"],
+    "บาดเจ็บ": ["เครื่องจักร", "ของมีคม", "วัสดุตกใส่"],
+    "อุบัติเหตุเดินทาง": ["ระหว่างมาปฏิบัติงาน", "ไป-กลับ ที่"],
+  },
+
+  "บุคลากร": {
+    "การโอนย้าย": ["ย้ายหน่วยงาน", "ย้ายสังกัด"],
+    "การลาออก": ["ลาออกเอง", "ลาออกโดยไม่แจ้งล่วงหน้า"],
+    "การเลิกจ้าง": ["เลิกจ้างทันที", "สิ้นสุดสัญญา"],
+  },
+
+  "วินัยการทำงาน": {
+    "การมาทำงาน": ["ขาดงาน", "มาสาย", "ไม่ตอกบัตร"],
+    "การปฏิบัติงาน": ["ไม่ปฏิบัติงานตามที่มอบหมาย", "ไม่ปฏิบัติตามกฏ"],
+    "การแต่งกาย": ["ไม่สวมเครื่องแบบ", "แต่งกายไม่สุภาพ"],
+  },
+
+  "การประเมินผล": {
+    "ทดลองงาน": ["ไม่ผ่านทดลองงาน"],
+    "ประเมินผลงาน": ["คะแนนต่ำ", "ไม่ได้รับอนุมัติ"],
+    "การพัฒนา": ["ไม่เข้าร่วมอบรม", "ไม่ปรับปรุงตามแผน"],
+  },
+
+  "ความปลอดภัย": {
+    "อุปกรณ์ป้องกัน": ["ไม่สวม PPE", "PPE ชำรุด"],
+    "สภาพแวดล้อม": ["พื้นที่เสี่ยง", "ป้ายเตือนขาดหาย"],
+    "ระบบป้องกัน": ["อุปกรณ์ดับเพลิง", "กล้องวงจรปิดไม่ทำงาน"],
+  },
+
+  "การร้องเรียน": {
+    "พฤติกรรม": ["พูดจาไม่สุภาพ", "กลั่นแกล้ง", "ล่วงละเมิด"],
+    "ความเป็นธรรม": ["การประเมินไม่โปร่งใส", "การเลื่อนตำแหน่ง"],
+    "การทำงานร่วมกัน": ["ขัดแย้งภายในทีม", "การสื่อสารไม่ดี"],
+  },
+
+  "สิ่งอำนวยความสะดวก": {
+    "น้ำ": ["น้ำไม่ไหล", "ท่อรั่ว"],
+    "ไฟ": ["ไฟดับ", "หลอดไฟเสีย"],
+    "ห้องน้ำ": ["ชำรุด", "น้ำไม่ลง", "มีกลิ่น"],
+    "เครื่องปรับอากาศ": ["ไม่เย็น", "เสียงดัง", "น้ำหยด"],
+  },
+
+  "เอกสารและลายเซ็น": {
+    "หนังสือรับรอง": ["ขอหนังสือรับรอง", "เอกสารผิดชื่อ"],
+    "เอกสารภายใน": ["แบบฟอร์มหาย", "เซ็นไม่ครบ"],
+    "เอกสารภายนอก": ["ส่งล่าช้า", "เซ็นล่าช้า", "ข้อมูลไม่ครบ"],
+  },
+};
+
+// helper: แปลงเป็นรูปแบบเดียวกับการ์ดรายละเอียด (ให้ใช้ r.name)
+function getStaticDetailRows(catTH, subName) {
+  const cat = String(catTH || "").trim();
+  const sub = String(subName || "").trim();
+
+  const list = (DETAIL_STATIC[cat] && DETAIL_STATIC[cat][sub]) ? DETAIL_STATIC[cat][sub] : [];
+  return list.map(name => ({ name }));
+}
+
 
     
     // ===== Category & Sub-category =====
@@ -1717,15 +1781,20 @@ if (subs && subs.length) {
         container.appendChild(card);
       });
     }
-    async function selectSubCategory(name){
+    function selectSubCategory(name){
   selectedSubCategoryName = name;
 
-  // เปิด popup โหลด
-  showLoading('กำลังโหลดรายละเอียด...');
-  const groups = await loadDetails(selectedCategoryTH, selectedSubCategoryName);
-  hideLoading();
+  // ✅ ไม่ต้องโหลดจาก API แล้ว → ดึงจาก DETAIL_STATIC ทันที
+  const rows = getStaticDetailRows(selectedCategoryTH, selectedSubCategoryName);
+  const groups = {
+    detail1: rows.map(r => r.name),
+    detail2: [],
+    detail3: [],
+    detail4: [],
+    detail5: []
+  };
 
-  // แสดงรายละเอียดภายใน Step 3 เดิม (เปลี่ยนการ์ดใน subCategoryCards)
+  // แสดงรายละเอียดเป็นการ์ด (กดได้ทันที)
   renderDetailCards(groups);
 }
     
@@ -1816,17 +1885,7 @@ function toggleTimeEdit(){
   btn.textContent = el.readOnly ? 'แก้ไข' : 'บันทึก';
 }
 
-    function showLoading(msg = 'กำลังโหลดข้อมูล...') {
-  const ov = document.getElementById('loadingOverlay');
-  const tx = document.getElementById('loadingText');
-  if (tx) tx.textContent = msg;
-  if (ov) ov.classList.remove('hidden');
-}
 
-function hideLoading() {
-  const ov = document.getElementById('loadingOverlay');
-  if (ov) ov.classList.add('hidden');
-}
 
 // ปุ่มเริ่มต้นแจ้งเหตุการณ์จะเรียกตัวนี้แทน nextStep ตรง ๆ
 async function startIncident() {
