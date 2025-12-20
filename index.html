@@ -1197,6 +1197,21 @@ function showPage(page) {
   const CATEGORY_CACHE_KEY = 'hrir_categories_v1';
   const CATEGORY_TTL_MS = 5 * 60 * 1000; // 5 นาที
   let categoryMemCache = null;
+    
+    // === STATIC CATEGORIES (Fallback/Default) ===
+// ใช้โชว์การ์ดทันที ไม่ต้องรอโหลดจาก Google Sheet
+const STATIC_CATEGORIES = [
+  { th: 'อุบัติเหตุ',            en: 'Accident',                slug: 'อุบัติเหตุ' },
+  { th: 'บุคลากร',              en: 'Personnel Movement',      slug: 'บุคลากร' },
+  { th: 'วินัยการทำงาน',         en: 'Work Discipline',         slug: 'วินัยการทำงาน' },
+  { th: 'การประเมินผล',          en: 'Performance Evaluation',  slug: 'การประเมินผล' },
+  { th: 'ความปลอดภัย',           en: 'Safety',                  slug: 'ความปลอดภัย' },
+  { th: 'การร้องเรียน',          en: 'Complaint',               slug: 'การร้องเรียน' },
+  { th: 'สิ่งอำนวยความสะดวก',     en: 'Facility',                slug: 'สิ่งอำนวยความสะดวก' },
+  { th: 'เอกสารและลายเซ็น',       en: 'Document',               slug: 'เอกสารและลายเซ็น' },
+];
+
+    
 
   function getCachedCategories() {
     if (categoryMemCache) return categoryMemCache;
@@ -1365,19 +1380,12 @@ function hideLoading() {
   modal.classList.add('hidden');
   modal.classList.remove('flex');
 
-  // บังคับ display:none กัน CSS ทับ
+  // บังคับ display:none กัน CSS/inline style ทับ
   modal.style.display = 'none';
+  modal.style.opacity = '0';
 
   // คืน scroll ปกติ
   document.body.style.overflow = '';
-}
-
-function hideLoading() {
-  const modal = document.getElementById("loadingModal");
-
-  // ซ่อน modal
-  modal.classList.add("hidden");
-  modal.classList.remove("flex");
 }
     
   async function loadSubCategories(catTH, opts = {}) {
@@ -1611,37 +1619,90 @@ async function verifyEmployee(e){
 }
   } 
 
+    // ===== STATIC SUBCATEGORIES (ไม่โหลดจาก Google Script) =====
+const SUBCATEGORY_STATIC = {
+  "อุบัติเหตุ": [
+    "ไฟ",
+    "ลื่นล้ม",
+    "บาดเจ็บ",
+    "อุบัติเหตุเดินทาง"
+  ],
+  "บุคลากร": [
+    "การโอนย้าย",
+    "การลาออก",
+    "การเลิกจ้าง"
+  ],
+  "วินัยการทำงาน": [
+    "การมาทำงาน",
+    "การปฏิบัติงาน",
+    "การแต่งกาย"
+  ],
+  "การประเมินผล": [
+    "ทดลองงาน",
+    "ประเมินผลงาน",
+    "การพัฒนา"
+  ],
+  "ความปลอดภัย": [
+    "อุปกรณ์ป้องกัน",
+    "สภาพแวดล้อม",
+    "ระบบป้องกัน"
+  ],
+  "การร้องเรียน": [
+    "พฤติกรรม",
+    "ความเป็นธรรม",
+    "การทำงานร่วมกัน"
+  ],
+  "สิ่งอำนวยความสะดวก": [
+    "น้ำ",
+    "ไฟ",
+    "ห้องน้ำ",
+    "เครื่องปรับอากาศ"
+  ],
+  "เอกสารและลายเซ็น": [
+    "หนังสือรับรอง",
+    "เอกสารภายใน",
+    "เอกสารภายนอก"
+  ]
+};
+
+// helper: แปลงเป็น format เดียวกับ renderSubCategoryCards(rows) ที่ใช้ r.name
+function getStaticSubCategoryRows(catTH) {
+  const list = SUBCATEGORY_STATIC[String(catTH || '').trim()] || [];
+  return list.map(name => ({ name }));
+}
+
+    
     // ===== Category & Sub-category =====
        async function selectCategory(cat){
   // เก็บค่าหมวดที่เลือก (จาก action=categories)
-  selectedCategory   = String(cat.slug || '').trim();
-  selectedCategoryTH = String(cat.th   || '').trim();
-  selectedCategoryEN = String(cat.en   || '').trim();
+ selectedCategory   = String(cat.slug || cat.th || '').trim(); // fallback ให้ชัวร์
+selectedCategoryTH = String(cat.th   || '').trim();
+selectedCategoryEN = String(cat.en   || '').trim();
 
-  // เปิด popup โหลด
-  showLoading('กำลังโหลดประเภทย่อย...');
-         
-         // เรียก API หา "ประเภทย่อย" ของหมวดนี้ (กรองตามคอลัมน์ A)
-  const subs = await loadSubCategories(selectedCategoryTH, { silent:true });
-         
-         // ปิด popup
-  hideLoading();
+  // ✅ ใช้ประเภทย่อยแบบ static ทันที (ไม่เรียก Google Script)
+const subs = getStaticSubCategoryRows(selectedCategoryTH);
 
-      // ถ้า slug เข้ากับแมปเดิม (termination/accident/safety/complaint) → แสดง sub
-     if (subs && subs.length){
-    // มีประเภทย่อย → ไป Step 3
-    document.getElementById('subCategoryTitle').textContent = `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
-    document.getElementById('categoryStep').classList.add('hidden');
-    document.getElementById('subCategoryStep').classList.remove('hidden');
-    document.getElementById('step2').classList.remove('active');
-    document.getElementById('step2').classList.add('completed');
-    document.getElementById('step3').classList.add('active');
-    currentStep = 3;
-  } else {
-    // ไม่มีประเภทย่อย → ข้ามไปกรอกรายละเอียด
-    selectedSubCategoryName = '';
-    showEmployeeLogin();
-      }
+// ไม่ต้อง showLoading/hideLoading แล้ว เพราะไม่ได้โหลดจากเน็ต
+renderSubCategoryCards(subs);
+
+if (subs && subs.length) {
+  // มีประเภทย่อย → ไป Step 3
+  document.getElementById('subCategoryTitle').textContent =
+    `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
+
+  document.getElementById('categoryStep').classList.add('hidden');
+  document.getElementById('subCategoryStep').classList.remove('hidden');
+
+  document.getElementById('step2').classList.remove('active');
+  document.getElementById('step2').classList.add('completed');
+  document.getElementById('step3').classList.add('active');
+
+  currentStep = 3;
+} else {
+  // ไม่มีประเภทย่อย → ข้ามไปกรอกรายละเอียด
+  selectedSubCategoryName = '';
+  showEmployeeLogin();
+}
     }
 
     function showSubCategories(category){
@@ -1769,12 +1830,13 @@ function hideLoading() {
 
 // ปุ่มเริ่มต้นแจ้งเหตุการณ์จะเรียกตัวนี้แทน nextStep ตรง ๆ
 async function startIncident() {
-  showLoading('กำลังโหลดข้อมูล...');
   try {
-    await nextStep(); // ให้ nextStep ไปจัดการโหลด categories และปิด popup ตอนเสร็จ
+    // ไม่ต้อง showLoading แล้ว เพราะ Step 2 แสดงการ์ดจาก STATIC ทันที
+    await nextStep();
   } catch (e) {
-    hideLoading();
     console.error(e);
+    // เผื่อมี popup ค้างจากจุดอื่น ให้ปิดทิ้งกันไว้
+    hideLoading();
   }
 }
 
@@ -1798,28 +1860,27 @@ async function startIncident() {
     return;
   }
 
-  // === เข้าสtep 2: โหลดหมวดหมู่แบบมี popup ===
-  document.getElementById(`step${currentStep}`).classList.add('active');
+// === เข้าสtep 2: โชว์หมวดหมู่ทันที (ไม่รอโหลดจาก Google Sheet) ===
+document.getElementById(`step${currentStep}`).classList.add('active');
 
-      // ยัง "ไม่" เปิด categoryStep เพื่อไม่ให้พื้นหลังโชว์ก่อน
-      document.getElementById('categoryStep').classList.add('hidden');
+// 1) โชว์การ์ดจาก STATIC ทันที (ได้หน้าตาแบบรูปที่ 2 เสมอ)
+renderCategories(STATIC_CATEGORIES);
+setCachedCategories(STATIC_CATEGORIES);
 
-      // เปิด popup โหลด
-      showLoading('กำลังโหลดประเภทการแจ้ง...');
+// 2) โชว์ section ทันที (ไม่ต้องเปิด popup โหลด)
+const section = document.getElementById('categoryStep');
+section.classList.remove('hidden');
+section.classList.add('opacity-0');
 
-      // ✅ โหลดข้อมูล + render การ์ด โดย "ไม่" silent
-      //    ถ้า Apps Script มีปัญหา หรือ rows ว่าง จะขึ้นข้อความใน #categoryError
-      await loadCategories({ silent: false });
+requestAnimationFrame(() => {
+  section.classList.add('transition-opacity', 'duration-300');
+  section.classList.remove('opacity-0');
+});
 
-      // ปิด popup แล้วโชว์ section พร้อม effect เผยทั้งชุด
-      hideLoading();
-      const section = document.getElementById('categoryStep');
-      section.classList.remove('hidden');
-      section.classList.add('opacity-0');
-      requestAnimationFrame(() => {
-        section.classList.add('transition-opacity', 'duration-300');
-        section.classList.remove('opacity-0');
-      });
+// 3) (แนะนำ) refresh จาก Google Sheet แบบเงียบใน background
+//    ถ้าโหลดทัน ระบบจะอัปเดตการ์ดเป็นข้อมูลล่าสุดเอง โดยไม่ทำให้ผู้ใช้เห็นกล่องว่าง
+loadCategories({ silent: true });
+
 
   }
 
