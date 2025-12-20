@@ -297,7 +297,11 @@ input:focus {
     <!-- Step 3: Sub-category -->
     <section id="subCategoryStep" class="hidden fade-in">
       <div class="text-center mb-6">
-        <button onclick="goBackToCategory()" class="mb-4 px-4 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 text-sm">← กลับไปเลือกประเภทหลัก</button>
+        <button id="step3BackBtn"
+        onclick="goBackStep3()"
+        class="mb-4 px-4 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 text-sm">
+  ← กลับไปเลือกประเภทหลัก
+</button>
         <h2 id="subCategoryTitle" class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-1">เลือกประเภทย่อย</h2>
         <p class="text-sm text-gray-600">กรุณาเลือกประเภทย่อยที่ตรงกับเหตุการณ์</p>
       </div>
@@ -1141,6 +1145,7 @@ let selectedCategoryEN      = '';
 let selectedSubCategory     = '';
 let selectedSubCategoryName = '';
 let selectedDetailName      = '';
+let step3Mode = 'subcategories';
 
 let currentPage       = 'report';
 let isHRBPLoggedIn    = false;
@@ -1158,6 +1163,37 @@ let hrbpCurrentPage   = 1;   // ✅ หน้าเริ่มต้น
 
 let historyCurrentRows  = [];
 let historyFilterStatus = 'ALL';
+    
+ function setStep3BackLabel(){
+  const btn = document.getElementById('step3BackBtn');
+  if (!btn) return;
+
+  btn.textContent = (step3Mode === 'details')
+    ? '← กลับไปเลือกประเภทย่อย'
+    : '← กลับไปเลือกประเภทหลัก';
+}
+
+// ปุ่ม back ของ Step 3
+function goBackStep3(){
+  // ถ้าอยู่หน้ารายละเอียด → กลับไปหน้าประเภทย่อย (ยังอยู่ Step 3 เหมือนเดิม)
+  if (step3Mode === 'details') {
+    step3Mode = 'subcategories';
+    setStep3BackLabel();
+
+    // เปลี่ยนหัวข้อกลับเป็น “เลือกประเภทย่อย”
+    document.getElementById('subCategoryTitle').textContent =
+      `เลือกประเภทย่อยของ “${selectedCategoryTH || 'หมวดหมู่'}”`;
+
+    // render ประเภทย่อยใหม่จาก static
+    const subs = getStaticSubCategoryRows(selectedCategoryTH);
+    renderSubCategoryCards(subs);
+    return;
+  }
+
+  // ถ้าอยู่หน้าประเภทย่อย → กลับไป Step 2 (ประเภทหลัก)
+  goBackToCategory();
+}
+   
 
     // ===== Page router =====
 function showPage(page) {
@@ -1495,6 +1531,9 @@ function renderDetailCards(groups){
     showEmployeeLogin();
     return;
   }
+  
+  step3Mode = 'details';
+setStep3BackLabel();
 
   // ตั้งชื่อหัวข้อด้านบน
   document.getElementById('subCategoryTitle').textContent = 
@@ -1748,6 +1787,8 @@ const subs = getStaticSubCategoryRows(selectedCategoryTH);
 
 // ไม่ต้อง showLoading/hideLoading แล้ว เพราะไม่ได้โหลดจากเน็ต
 renderSubCategoryCards(subs);
+         step3Mode = 'subcategories';
+setStep3BackLabel();
 
 if (subs && subs.length) {
   // มีประเภทย่อย → ไป Step 3
@@ -1850,10 +1891,21 @@ if (subs && subs.length) {
 }
 
     function goBackToCategory(){
-      document.getElementById('subCategoryStep').classList.add('hidden');
-      document.getElementById('categoryStep').classList.remove('hidden');
-      document.getElementById('step3').classList.add('active');
-    }
+  // กลับไปหน้าเลือกประเภทหลัก (Step 2)
+  document.getElementById('subCategoryStep').classList.add('hidden');
+  document.getElementById('categoryStep').classList.remove('hidden');
+
+  // ปรับ progress step ให้ถูกต้อง
+  document.getElementById('step3').classList.remove('active');
+  document.getElementById('step2').classList.add('active');
+  document.getElementById('step2').classList.remove('completed');
+
+  currentStep = 2;
+
+  // รีเซ็ตโหมด Step 3 เผื่อเข้าใหม่
+  step3Mode = 'subcategories';
+  setStep3BackLabel();
+}
 
    function setReadonlyStyle(input, isReadonly){
   if (isReadonly){
