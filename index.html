@@ -1381,11 +1381,11 @@ async function loadCategories(opts = {}){
     
 // ===== Loading Popup (ใช้ร่วมทุกหน้า) =====
 function showLoading(text) {
-  const modal = document.getElementById('loadingModal');
+  const modal = document.getElementById('loadingOverlay'); // ✅ แก้ id ให้ตรงกับ HTML
   const label = document.getElementById('loadingText');
 
   if (!modal) {
-    console.warn('showLoading: not found #loadingModal');
+    console.warn('showLoading: not found #loadingOverlay');
     return;
   }
 
@@ -1393,34 +1393,28 @@ function showLoading(text) {
     label.textContent = text || 'กำลังโหลด...';
   }
 
-  // บังคับให้แสดงแน่นอน
+  // ✅ แสดง overlay
   modal.classList.remove('hidden');
-  modal.classList.add('flex');
 
-  // กันกรณี class จากที่อื่นมาทับ
-  modal.style.display = 'flex';
+  // กันกรณี style อื่นมาทับ
+  modal.style.display = 'block';
   modal.style.opacity = '1';
 
-  // ถ้าอยากล็อกการเลื่อนหน้าจอระหว่างโหลด
+  // ล็อกการเลื่อนหน้าจอระหว่างโหลด
   document.body.style.overflow = 'hidden';
 }
 
 function hideLoading() {
-  const modal = document.getElementById('loadingModal');
+  const modal = document.getElementById('loadingOverlay'); // ✅ แก้ id ให้ตรงกับ HTML
   if (!modal) {
-    console.warn('hideLoading: not found #loadingModal');
+    console.warn('hideLoading: not found #loadingOverlay');
     return;
   }
 
-  // ซ่อน popup
   modal.classList.add('hidden');
-  modal.classList.remove('flex');
-
-  // บังคับ display:none กัน CSS/inline style ทับ
   modal.style.display = 'none';
-  modal.style.opacity = '0';
 
-  // คืน scroll ปกติ
+  // ปลดล็อก scroll
   document.body.style.overflow = '';
 }
     
@@ -1616,6 +1610,9 @@ async function verifyEmployee(e){
   if(!id) return alert('กรุณากรอกรหัสพนักงาน');
 
   showLoading('กำลังตรวจสอบรหัสพนักงาน...');
+  
+  await new Promise(requestAnimationFrame);
+  
   try {
     const res = await fetch(API_URL + '?action=employee&empId=' + encodeURIComponent(id));
     const rs = await res.json();
@@ -2517,19 +2514,12 @@ async function verifyHistoryAccess(e) {
   }
 
   try {
-    // แสดง popup ระหว่างตรวจสอบ
+    // ✅ แสดง popup ระหว่างตรวจสอบ
     showLoading('กำลังตรวจสอบรหัสพนักงาน...');
 
-    // เรียก Script เพื่อเช็คพนักงาน
-    const url = API_URL + '?action=employee&empId=' + encodeURIComponent(empId);
-    console.log('🔍 verifyHistoryAccess →', url);
+    // ✅ เรียก Apps Script (action=employee) ผ่าน helper ที่มีอยู่แล้ว
+    const data = await apiGet({ action: 'employee', empId });
 
-    const res = await fetch(url, { method: 'GET' });
-    if (!res.ok) {
-      throw new Error('HTTP ' + res.status);
-    }
-
-    const data = await res.json();
     console.log('📦 employee data:', data);
 
     if (!data.ok || !data.data) {
@@ -2537,25 +2527,25 @@ async function verifyHistoryAccess(e) {
       return;
     }
 
-    // เก็บสถานะพนักงานที่ล็อกอินแล้ว
+    // ✅ เก็บสถานะพนักงานที่ล็อกอินแล้ว
     isHistoryLoggedIn = true;
     historyEmp = data.data;
 
-    // ซ่อนส่วน login และเปิดส่วนประวัติ
+    // ✅ ซ่อนส่วน login และเปิดส่วนประวัติ
     const loginBox = document.getElementById('historyLoginSection');
     const contentBox = document.getElementById('historyContent');
 
     if (loginBox) loginBox.classList.add('hidden');
     if (contentBox) contentBox.classList.remove('hidden');
 
-    // โหลดเคส (ตอนนี้ยังมี popup แสดงอยู่)
+    // ✅ โหลดรายการเคสของพนักงาน (รอให้เสร็จจริงก่อน)
     await loadHistoryCases(empId);
 
   } catch (err) {
     console.error('❌ verifyHistoryAccess error:', err);
-    alert('เกิดข้อผิดพลาดในการตรวจสอบรหัสพนักงาน');
+    alert('เกิดข้อผิดพลาดในการตรวจสอบรหัสพนักงาน\n' + (err.message || err));
   } finally {
-    // ปิด popup ไม่ว่าผลจะสำเร็จหรือ error
+    // ✅ ปิด popup ไม่ว่า success / fail
     hideLoading();
   }
 }
