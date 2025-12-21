@@ -123,6 +123,36 @@ input:focus {
   </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+  
+  <body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+
+  <!-- ✅ Loading Overlay (Popup) -->
+  <div id="loadingOverlay" class="hidden fixed inset-0 z-[9999]">
+    <div class="absolute inset-0 bg-black/40"></div>
+
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md p-6">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-transparent flex items-center justify-center">
+            <svg class="w-7 h-7 text-blue-600 animate-spin"
+                 xmlns="http://www.w3.org/2000/svg"
+                 fill="none"
+                 viewBox="0 0 24 24">
+              <path class="opacity-25" fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20z"></path>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"></path>
+            </svg>
+          </div>
+
+          <div>
+            <div class="text-lg font-bold text-gray-800" id="loadingText">กำลังโหลดข้อมูล...</div>
+            <div class="text-sm text-gray-500">กรุณารอสักครู่</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
   <!-- Header -->
 <nav class="w-full bg-white px-4 sm:px-8 py-3 sm:py-4 shadow-sm">
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6">
@@ -213,31 +243,7 @@ input:focus {
   </div>
 </div>
     
-    <!-- ✅ Loading Overlay (Popup) -->
-<div id="loadingOverlay" class="hidden fixed inset-0 z-[9999]">
-  <div class="absolute inset-0 bg-black/40"></div>
-
-  <div class="relative min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md p-6">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-2xl bg-transparent flex items-center justify-center">
-  <svg class="w-7 h-7 text-blue-600 animate-spin"
-     xmlns="http://www.w3.org/2000/svg"
-     fill="none"
-     viewBox="0 0 24 24">
-    <path class="opacity-25" fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20z"></path>
-    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"></path>
-  </svg>
-</div>
-
-        <div>
-          <div class="text-lg font-bold text-gray-800" id="loadingText">กำลังโหลดข้อมูล...</div>
-          <div class="text-sm text-gray-500">กรุณารอสักครู่</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+   
 
 
     <!-- Step 1: Intro -->
@@ -2516,12 +2522,14 @@ async function verifyHistoryAccess(e) {
   }
 
   try {
-    // ✅ แสดง popup ระหว่างตรวจสอบ
+    // ✅ 1) เปิด popup ก่อน
     showLoading('กำลังตรวจสอบรหัสพนักงาน...');
 
-    // ✅ เรียก Apps Script (action=employee) ผ่าน helper ที่มีอยู่แล้ว
-    const data = await apiGet({ action: 'employee', empId });
+    // ✅ 2) รอให้ browser วาด popup ขึ้นจอก่อนค่อยยิง API
+    await new Promise(requestAnimationFrame);
 
+    // ✅ 3) ตรวจสอบพนักงาน
+    const data = await apiGet({ action: 'employee', empId });
     console.log('📦 employee data:', data);
 
     if (!data.ok || !data.data) {
@@ -2529,25 +2537,24 @@ async function verifyHistoryAccess(e) {
       return;
     }
 
-    // ✅ เก็บสถานะพนักงานที่ล็อกอินแล้ว
+    // ✅ 4) เก็บสถานะ + เปิดหน้า content
     isHistoryLoggedIn = true;
     historyEmp = data.data;
 
-    // ✅ ซ่อนส่วน login และเปิดส่วนประวัติ
     const loginBox = document.getElementById('historyLoginSection');
     const contentBox = document.getElementById('historyContent');
 
     if (loginBox) loginBox.classList.add('hidden');
     if (contentBox) contentBox.classList.remove('hidden');
 
-    // ✅ โหลดรายการเคสของพนักงาน (รอให้เสร็จจริงก่อน)
+    // ✅ 5) โหลดประวัติ (ยังอยู่ใน popup ระหว่างโหลด)
     await loadHistoryCases(empId);
 
   } catch (err) {
     console.error('❌ verifyHistoryAccess error:', err);
     alert('เกิดข้อผิดพลาดในการตรวจสอบรหัสพนักงาน\n' + (err.message || err));
   } finally {
-    // ✅ ปิด popup ไม่ว่า success / fail
+    // ✅ 6) ปิด popup หลังโหลดเสร็จ/หรือ error
     hideLoading();
   }
 }
