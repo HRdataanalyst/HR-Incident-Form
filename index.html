@@ -3072,28 +3072,32 @@ async function loadHistoryCases(empId){
       }
 
       return {
-        id:   caseId2,
-        type: typeText,          // ✅ เพิ่ม type ให้ใช้ในหน้า History
+  // ✅ พกข้อมูลดิบเดิมทั้งหมดติดไปด้วย
+  ...r,
 
-        dateRaw:     dateRaw,    // ✅ เก็บ raw ไว้ sort
-        date:        dateRaw,    // ใช้สำรองถ้า dateDisplay ไม่มี
-        dateDisplay: dateDisplay,
+  // ✅ ฟิลด์ที่หน้า History ใช้แสดงในการ์ด
+  id:   caseId2,
+  type: typeText,
 
-        employee:
-          empName && empIdVal
-            ? `${empName} (${empIdVal})`
-            : (empName || empIdVal || ''),
+  dateRaw:     dateRaw,
+  date:        dateRaw,
+  dateDisplay: dateDisplay,
 
-        status:     statusDisplay,
-        baseStatus: baseStatus,
-        hrbpStatus: hrbpStatus,
-        isClosed:   isClosed,
+  employee:
+    empName && empIdVal
+      ? `${empName} (${empIdVal})`
+      : (empName || empIdVal || ''),
 
-        closedAt:  closeAtDisplay,
-        closedRaw: closeRaw,
+  status:     statusDisplay,
+  baseStatus: baseStatus,
+  hrbpStatus: hrbpStatus,
+  isClosed:   isClosed,
 
-        details:   detailText
-      };
+  closedAt:   closeAtDisplay,
+  closedRaw:  closeRaw,
+
+  details:    detailText
+};
     });
 
     // ส่งให้ฟังก์ชันแสดงผลของหน้า History
@@ -3422,81 +3426,165 @@ document.addEventListener('DOMContentLoaded', () => {
     alert('เกิดข้อผิดพลาดในการปิดเคส');
   }
 }
+    
+    // ✅ ทำให้ inline onclick เรียกได้แน่นอน
+window.viewCaseHistory = viewCaseHistory;
+window.closeCaseByEmployee = closeCaseByEmployee;
+
+    
 
     async function viewCase(id){
-  let row = null;
+  const modal   = document.getElementById('caseModal');
+  const content = document.getElementById('caseContent');
+  const titleEl = document.getElementById('caseTitle');
 
-  // 1) พยายามหาเคสจาก historyCases ก่อน
-  if (Array.isArray(historyCases) && historyCases.length){
-    row = historyCases.find(r =>
-      String(r['CaseId'] || '').trim() === String(id).trim()
-    );
+  // ✅ 0) ถ้า modal ไปอยู่ใต้ parent ที่ถูกซ่อนอยู่ ให้ย้ายมาไว้ใต้ body (ชัวร์สุด)
+  if (modal && modal.parentElement !== document.body) {
+    document.body.appendChild(modal);
   }
 
-  // 2) ถ้าไม่เจอ ลองถาม Apps Script ด้วย action=getbyid (ให้ใช้ rs.data ให้ตรงกับฝั่ง Apps Script)
-  if (!row){
-    try{
-      const rs = await apiGet({ action:'getbyid', caseId: id });
-      if (rs.ok && rs.data){
-        row = rs.data;   // ← เปลี่ยนจาก rs.obj เป็น rs.data
-      }
-    }catch(err){
-      console.error(err);
+  // ✅ 1) เปิด Modal ทันที (ผู้ใช้ต้องเห็นทันทีว่าคลิกแล้วทำงาน)
+  if (titleEl) titleEl.textContent = 'รายละเอียดเคส';
+  if (content){
+    content.innerHTML = `
+      <div class="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+        <div class="font-semibold text-blue-700">กำลังโหลดรายละเอียด...</div>
+        <div class="text-blue-600 text-sm mt-1">กรุณารอสักครู่</div>
+      </div>
+    `;
+  }
+  if (modal) modal.classList.remove('hidden');
+
+  const caseId = String(id || '').trim();
+  if (!caseId){
+    if (content){
+      content.innerHTML = `
+        <div class="p-4 bg-red-50 border border-red-100 rounded-lg">
+          <div class="font-semibold text-red-700">ไม่พบ Case ID</div>
+        </div>
+      `;
     }
-  }
-
-  if (!row){
-    alert('ไม่พบข้อมูลเคส');
     return;
   }
 
-  const caseId   = String(row['CaseId']   || '').trim();
-  const category = String(row['Category'] || '').trim();
-  const subCat   = String(row['SubCategory'] || '').trim();
-  const typeText = [category, subCat].filter(Boolean).join(' - ');
+  let row = null;
 
-  const status   = String(row['Status']   || '').trim() || '-';
-  const location = String(row['Location'] || '').trim();
- const ts       = row['Timestamp'];
-
-  let dateText = '';
-  let timeText = '';
-
-  if (ts) {
-    // ใช้รูปแบบเดียวกับหน้า list
-    const formatted = formatDateTime(String(ts));
-    dateText = formatted;   // เอาไปแสดงรวมเป็น "วันที่และเวลา"
+  // 2) หาใน "ชุดข้อมูลที่กำลังโชว์บนหน้า" ก่อน
+  if (Array.isArray(historyCurrentRows) && historyCurrentRows.length){
+    row = historyCurrentRows.find(r =>
+      String(r['CaseId'] || r['caseId'] || r['id'] || '').trim() === caseId
+    );
   }
 
-  const empName  = String(row['EmpName'] || '').trim();
-  const empId    = String(row['EmpId']   || '').trim();
-  const reporter = empName && empId ? `${empName} (${empId})` : (empName || empId || '');
+  // 3) ถ้ายังไม่เจอ ค่อยหาใน historyCases
+  if (!row && Array.isArray(historyCases) && historyCases.length){
+    row = historyCases.find(r =>
+      String(r['CaseId'] || r['caseId'] || r['id'] || '').trim() === caseId
+    );
+  }
 
-  const detailMain = String(row['Detail']  || '').trim();
-  const comment    = String(row['Comment'] || '').trim();
-  const details    = [detailMain, comment].filter(Boolean).join('\n\n');
+  // 4) ถ้ายังไม่เจอจริง ๆ ค่อยยิงไป Apps Script
+  if (!row){
+    try{
+      const rs = await apiGet({ action:'getbyid', caseId: caseId });
+      if (rs && rs.ok && rs.data){
+        row = rs.data;
+      }
+    }catch(err){
+      console.error('getbyid failed', err);
+    }
+  }
 
-  document.getElementById('caseTitle').textContent =
-    (caseId ? caseId + ' - ' : '') + (typeText || 'รายละเอียดเคส');
+  // 5) ถ้ายังไม่เจอ → แสดงใน modal
+  if (!row){
+    if (content){
+      content.innerHTML = `
+        <div class="p-4 bg-red-50 border border-red-100 rounded-lg">
+          <div class="font-semibold text-red-700">ไม่พบข้อมูลเคส</div>
+          <div class="text-red-600 text-sm mt-1">Case ID: ${caseId}</div>
+        </div>
+      `;
+    }
+    return;
+  }
 
-  document.getElementById('caseContent').innerHTML = `
-    <div class="grid md:grid-cols-2 gap-4">
-      <div><strong>สถานะ:</strong> ${status}</div>
-      <div><strong>ประเภท:</strong> ${typeText || '-'}</div>
-      <div><strong>สถานที่:</strong> ${location || '-'}</div>
-      <div><strong>วันที่และเวลา:</strong> ${dateText || '-'}</div>
-      <div><strong>ผู้แจ้ง:</strong> ${reporter || '-'}</div>
-    </div>
-    <div class="mt-4">
-      <strong>รายละเอียด:</strong>
-      <p class="mt-2 p-4 bg-gray-50 rounded-lg whitespace-pre-line">${details || '-'}</p>
-    </div>
-  `;
+  // 6) Render รายละเอียด (คง logic เดิมของคุณ)
+  const caseIdText =
+  String(row['CaseId'] || row['caseId'] || row['id'] || '').trim() || caseId;
 
-  document.getElementById('caseModal').classList.remove('hidden');
+const category = String(row['Category'] || row['category'] || '').trim();
+const subCat   = String(row['SubCategory'] || row['subCategory'] || '').trim();
+const typeText =
+  [category, subCat].filter(Boolean).join(' - ') ||
+  String(row['type'] || '').trim() ||
+  '-';
+
+const status =
+  String(row['Status'] || row['status'] || '').trim() ||
+  '-';
+
+const location =
+  String(row['Location'] || row['location'] || '').trim() ||
+  '-';
+
+const ts = row['Timestamp'] || row['timestamp'] || '';
+let dateText = '';
+try { dateText = ts ? formatDateTime(String(ts)) : ''; } catch(e) {}
+
+const empName = String(row['EmpName'] || row['empName'] || '').trim();
+const empId   = String(row['EmpId'] || row['empId'] || '').trim();
+const reporter =
+  (empName || empId)
+    ? `${empName || '-'} ${empId ? `(${empId})` : ''}`
+    : '-';
+
+const detail  = String(row['Detail'] || row['detail'] || '').trim();
+const comment = String(row['Comment'] || row['comment'] || '').trim();
+const details =
+  [detail, comment].filter(Boolean).join('\n\n') ||
+  String(row['details'] || '').trim() ||
+  '-';
+
+  if (titleEl) titleEl.textContent = `รายละเอียดเคส: ${caseIdText}`;
+
+  if (content){
+    content.innerHTML = `
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-gray-500 text-sm">ประเภท</div>
+          <div class="font-semibold text-gray-800 mt-1">${typeText || '-'}</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-gray-500 text-sm">สถานะ</div>
+          <div class="font-semibold text-gray-800 mt-1">${status}</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-gray-500 text-sm">สถานที่</div>
+          <div class="font-semibold text-gray-800 mt-1">${location}</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-gray-500 text-sm">วันที่และเวลา</div>
+          <div class="font-semibold text-gray-800 mt-1">${dateText || '-'}</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-lg sm:col-span-2">
+          <div class="text-gray-500 text-sm">ผู้แจ้ง</div>
+          <div class="font-semibold text-gray-800 mt-1">${reporter}</div>
+        </div>
+      </div>
+
+      <div class="mt-4 p-4 bg-white border border-gray-100 rounded-lg">
+        <strong>รายละเอียด:</strong>
+        <p class="mt-2 p-4 bg-gray-50 rounded-lg whitespace-pre-line">${details || '-'}</p>
+      </div>
+    `;
+  }
 }
     
+    window.viewCase = viewCase;
+
+    
     function closeCaseModal(){ document.getElementById('caseModal').classList.add('hidden'); }
+    
 
     /** ---------- สถานที่เกิดเหตุ: โหลดจากชีต + แคช (Format + Location) --------- */
 
