@@ -516,21 +516,23 @@ input:focus {
   <!-- กล่องนี้คุมเฉพาะ input + ปุ่ม + dropdown -->
   <div class="relative">
     <input
-      type="text"
-      id="locationInput"
-      class="w-full px-3 py-2 pr-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-      placeholder="พิมพ์เพื่อค้นหาสถานที่..."
-      autocomplete="off"
-      oninput="typeaheadLocation(this.value)"
-      onclick="toggleLocationDropdown(true)"
-    />
-    <button
-      id="locationToggleBtn"
-      type="button"
-      class="absolute right-2 top-1/2 -translate-y-1/2 transform px-2 py-1 text-xs border rounded hover:bg-gray-50"
-      onclick="toggleLocationDropdown(true)"
-      aria-label="แสดงรายการ Location"
-    >▼</button>
+  type="text"
+  id="locationInput"
+  class="w-full px-3 py-2 pr-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+  placeholder="พิมพ์เพื่อค้นหาสถานที่..."
+  autocomplete="off"
+  oninput="typeaheadLocation(this.value)"
+  onclick="event.stopPropagation(); toggleLocationDropdown(true)"
+/>
+
+<button
+  id="locationToggleBtn"
+  type="button"
+  class="absolute right-2 top-1/2 -translate-y-1/2 transform px-2 py-1 text-xs border rounded hover:bg-gray-50"
+  onclick="event.stopPropagation(); toggleLocationDropdown(true)"
+  aria-label="แสดงรายการ Location"
+>▼</button>
+    
     <div id="locationDropdown"
          class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
   </div>
@@ -3557,14 +3559,15 @@ async function typeaheadLocation(q){
       // แสดง Format กำกับเล็กน้อยให้ผู้ใช้เห็น context
       div.textContent = fmt ? `${loc} (${fmt})` : loc;
 
-      div.onclick = () => {
-        input.value = loc;
-        // ถ้ายังไม่กรอก Format → เติม Format ตาม Location ที่เลือก
-        if (fmtInput && !fmtInput.value.trim()){
-          fmtInput.value = fmt;
-        }
-        dropdown.classList.add('hidden');
-      };
+      div.onclick = (ev) => {
+  if (ev) ev.stopPropagation();
+
+  input.value = loc;
+  if (fmtInput && !fmtInput.value.trim()){
+    fmtInput.value = fmt;
+  }
+  dropdown.classList.add('hidden');
+};
 
       dropdown.appendChild(div);
     });
@@ -3704,13 +3707,15 @@ async function toggleFormatDropdown(forceOpen){
       'px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0';
     div.textContent = fmt ? `${loc} (${fmt})` : loc;
 
-    div.onclick = () => {
-      input.value = loc;
-      if (fmtInput && !fmtInput.value.trim()){
-        fmtInput.value = fmt;
-      }
-      dropdown.classList.add('hidden');
-    };
+    div.onclick = (ev) => {
+  if (ev) ev.stopPropagation();
+
+  input.value = loc;
+  if (fmtInput && !fmtInput.value.trim()){
+    fmtInput.value = fmt;
+  }
+  dropdown.classList.add('hidden');
+};
 
     dropdown.appendChild(div);
   });
