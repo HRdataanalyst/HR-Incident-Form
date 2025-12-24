@@ -503,12 +503,12 @@ input:focus {
     />
     <!-- ▼ ปุ่ม Format -->
     <button
-      id="formatToggleBtn"
-      type="button"
-      class="absolute right-2 top-1/2 -translate-y-1/2 transform px-2 py-1 text-xs border rounded hover:bg-gray-50"
-      onclick="event.stopPropagation(); toggleFormatDropdown(true)"
-      aria-label="แสดงรายการ Format"
-    >▼</button>
+  id="formatToggleBtn"
+  type="button"
+  class="absolute right-2 top-1/2 -translate-y-1/2 transform px-2 py-1 text-xs border rounded hover:bg-gray-50 z-20 cursor-pointer"
+  onmousedown="event.preventDefault(); event.stopPropagation(); toggleFormatDropdown();"
+  aria-label="แสดงรายการ Format"
+>▼</button>
 
     <div id="formatDropdown"
          class="hidden absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto"></div>
@@ -534,8 +534,8 @@ input:focus {
 <button
   id="locationToggleBtn"
   type="button"
-  class="absolute right-2 top-1/2 -translate-y-1/2 transform px-2 py-1 text-xs border rounded hover:bg-gray-50"
-  onclick="event.stopPropagation(); toggleLocationDropdown(true)"
+  class="absolute right-2 top-1/2 -translate-y-1/2 transform px-2 py-1 text-xs border rounded hover:bg-gray-50 z-20 cursor-pointer"
+  onmousedown="event.preventDefault(); event.stopPropagation(); toggleLocationDropdown();"
   aria-label="แสดงรายการ Location"
 >▼</button>
     
@@ -3762,11 +3762,15 @@ async function toggleFormatDropdown(forceOpen){
   const dropdown = document.getElementById('formatDropdown');
   const input    = document.getElementById('locationFormat');
 
-  const shouldOpen = (typeof forceOpen === 'boolean')
+    const shouldOpen = (typeof forceOpen === 'boolean')
     ? forceOpen
     : dropdown.classList.contains('hidden');
 
-  if (!shouldOpen){ dropdown.classList.add('hidden'); return; }
+  if (!shouldOpen){
+    dropdown.classList.add('hidden');
+    return;
+  }
+
   
   closeFormatLocationDropdowns_('formatDropdown');
 
@@ -3797,6 +3801,7 @@ async function toggleFormatDropdown(forceOpen){
     dropdown.classList.add('hidden');
     return;
   }
+
       
       closeFormatLocationDropdowns_('locationDropdown');
 
