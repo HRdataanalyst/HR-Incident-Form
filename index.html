@@ -499,7 +499,7 @@ input:focus {
       placeholder="เช่น ชั้น/อาคาร/โซนผลิต"
       autocomplete="off"
       oninput="typeaheadFormat(this.value)"
-      onclick="toggleFormatDropdown(true)"
+      onclick="event.stopPropagation(); toggleFormatDropdown(true)"
     />
     <!-- ▼ ปุ่ม Format -->
     <button
@@ -3683,12 +3683,24 @@ document.addEventListener('click', (e)=>{
   const fmtInput    = document.getElementById('locationFormat');
   const fmtBtn      = document.getElementById('formatToggleBtn');
 
-  if (locDropdown && !locDropdown.contains(t) && t !== locInput && t !== locBtn){
-    locDropdown.classList.add('hidden');
-  }
-  if (fmtDropdown && !fmtDropdown.contains(t) && t !== fmtInput && t !== fmtBtn){
-    fmtDropdown.classList.add('hidden');
-  }
+  const clickInsideLoc =
+  (locDropdown && locDropdown.contains(t)) ||
+  (locInput && locInput.contains(t)) ||
+  (locBtn && locBtn.contains(t));
+
+if (locDropdown && !clickInsideLoc){
+  locDropdown.classList.add('hidden');
+}
+
+const clickInsideFmt =
+  (fmtDropdown && fmtDropdown.contains(t)) ||
+  (fmtInput && fmtInput.contains(t)) ||
+  (fmtBtn && fmtBtn.contains(t));
+
+if (fmtDropdown && !clickInsideFmt){
+  fmtDropdown.classList.add('hidden');
+}
+
 });
     /** ---------- Format: โหลดจากชีต (หรือ fallback) + แคช --------- */
 let _FORMATS = null; // แคชในหน้านี้
@@ -3735,6 +3747,17 @@ async function typeaheadFormat(q){
   }, 150);
 }
 
+   function closeFormatLocationDropdowns_(exceptId){
+  const ids = ['formatDropdown','locationDropdown'];
+  ids.forEach(id => {
+    if (id === exceptId) return;
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+}
+ 
+    
+    
 async function toggleFormatDropdown(forceOpen){
   const dropdown = document.getElementById('formatDropdown');
   const input    = document.getElementById('locationFormat');
@@ -3744,6 +3767,8 @@ async function toggleFormatDropdown(forceOpen){
     : dropdown.classList.contains('hidden');
 
   if (!shouldOpen){ dropdown.classList.add('hidden'); return; }
+  
+  closeFormatLocationDropdowns_('formatDropdown');
 
   const items = await ensureFormats();
   const list = items.slice(0, 100);
@@ -3772,6 +3797,8 @@ async function toggleFormatDropdown(forceOpen){
     dropdown.classList.add('hidden');
     return;
   }
+      
+      closeFormatLocationDropdowns_('locationDropdown');
 
   const items = await ensureLocations(); // [{format, location}]
   const currentFmt = (fmtInput && fmtInput.value ? fmtInput.value.trim().toLowerCase() : '');
