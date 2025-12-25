@@ -2671,7 +2671,10 @@ async function resetHRBPPage() {
 }
 
     
-    // ✅ HRBP กด "ยืนยันการแจ้งเหตุ" สำหรับเคสที่อยู่ในสถานะ "รอตรวจสอบ"
+   // ✅ กันกดซ้ำ/ยิงซ้ำ (global)
+const hrbpConfirmingSet = new Set();
+
+// ✅ HRBP กด "ยืนยันการแจ้งเหตุ" สำหรับเคสที่อยู่ในสถานะ "รอตรวจสอบ"
 async function confirmHRBPCase(caseId) {
   if (!currentHRBP || !currentHRBP.id) {
     alert('กรุณาเข้าสู่ระบบ HRBP อีกครั้ง');
@@ -2683,8 +2686,54 @@ async function confirmHRBPCase(caseId) {
     return;
   }
 
+  // ✅ กันกดซ้ำทันที
+  if (hrbpConfirmingSet.has(caseId)) return;
+
   const ok = confirm(`คุณต้องการยืนยันการแจ้งเหตุของเคส ${caseId} ใช่หรือไม่?`);
   if (!ok) return;
+
+  // ✅ ล็อกปุ่ม/ล็อกเคสทันที (ไม่ต้องรอสถานะจาก server)
+  hrbpConfirmingSet.add(caseId);
+
+  // หา element ปุ่มและ badge สถานะของเคสนี้ (เราจะใส่ data-attr ให้ในข้อ 2)
+  const btn = document.querySelector(`button[data-hrbp-action="confirm"][data-caseid="${caseId}"]`);
+  const badge = document.querySelector(`span[data-hrbp-badge="${caseId}"]`);
+
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('opacity-60', 'cursor-not-allowed');
+    btn.textContent = 'กำลังอัปเดต...';
+  }
+
+  // ✅ Optimistic UI: เปลี่ยนสถานะบนหน้าเว็บทันที
+  // - อัปเดตข้อมูลใน hrbpCurrentRows ก่อน เพื่อให้ render รอบถัดไปถูกต้อง
+  if (Array.isArray(hrbpCurrentRows) && hrbpCurrentRows.length) {
+    const idx = hrbpCurrentRows.findIndex(r => String(r.CaseId || r.caseId || '').trim() === caseId);
+    if (idx !== -1) {
+      hrbpCurrentRows[idx].StatusHRBP = 'รอดำเนินการ';
+      // เผื่อ key อื่น ๆ ใน data (กันไม่ตรงชื่อคอลัมน์)
+      hrbpCurrentRows[idx]['Status-HRBP'] = 'รอดำเนินการ';
+      hrbpCurrentRows[idx].DateHRBP = new Date().toISOString();
+      hrbpCurrentRows[idx]['Date-HRBP'] = new Date().toISOString();
+    }
+  }
+
+  if (badge) {
+    badge.textContent = 'รอดำเนินการ';
+    // เปลี่ยนโทนสีให้เป็น orange (ตาม logic เดิมของคุณ)
+    badge.classList.remove('border-yellow-300', 'text-yellow-700');
+    badge.classList.add('border-orange-300', 'text-orange-700');
+  }
+
+  // ✅ เปลี่ยนปุ่มให้เป็น "ดูรายละเอียด" ทันที (กันกดซ้ำ)
+  if (btn) {
+    btn.disabled = true; // คง disabled จนกว่าเราจะ re-render จากข้อมูลจริง
+    btn.textContent = 'ดูรายละเอียด';
+    btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+    btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+    btn.setAttribute('onclick', `viewCase('${caseId}')`);
+    btn.removeAttribute('data-hrbp-action'); // กัน selector เดิมไปเจออีก
+  }
 
   try {
     showLoading('กำลังอัปเดตสถานะเคส...');
@@ -2698,21 +2747,36 @@ async function confirmHRBPCase(caseId) {
     hideLoading();
 
     if (!res.ok) {
+      // ❗ ถ้า server ไม่สำเร็จ → ปลดล็อกให้กดใหม่ + แจ้งเตือน
+      hrbpConfirmingSet.delete(caseId);
+
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-60', 'cursor-not-allowed');
+        btn.textContent = 'ยืนยันการแจ้งเหตุ';
+      }
+      // รีเฟรชข้อมูลจริงกลับมาเพื่อคืน UI
+      await loadHRBPCases(currentHRBP.id);
+
       alert(res.error || 'อัปเดตสถานะไม่สำเร็จ');
       return;
     }
 
     alert('ยืนยันการแจ้งเหตุเรียบร้อยแล้ว');
 
-    // โหลดรายการเคสของ HRBP คนนี้ใหม่ เพื่ออัปเดตปุ่ม/สถานะบนหน้าจอ
+    // ✅ Sync ข้อมูลจริงจาก server อีกรอบ (กัน mismatch)
     await loadHRBPCases(currentHRBP.id);
 
   } catch (err) {
     hideLoading();
+    hrbpConfirmingSet.delete(caseId);
+
+    // รีเฟรชข้อมูลจริงกลับมาเพื่อคืน UI
+    try { await loadHRBPCases(currentHRBP.id); } catch {}
+
     alert('เกิดข้อผิดพลาดในการอัปเดตสถานะเคส\n' + (err.message || err));
   }
 }
-
     
    function showHRBPCases(rows) {
   const box = document.getElementById('hrbpCasesContainer');
@@ -2919,18 +2983,22 @@ async function confirmHRBPCase(caseId) {
         </div>
 
         <div class="flex flex-col items-end gap-1.5 shrink-0">
-          <span class="px-2.5 py-1 rounded-full bg-white/80 border text-[11px] sm:text-xs
-                       ${isClosed ? 'border-green-300 text-green-700'
-                                  : (displayStatus.includes('รอดำเนินการ')
-                                        ? 'border-orange-300 text-orange-700'
-                                        : 'border-yellow-300 text-yellow-700')}">
-            ${displayStatus}
-          </span>
-          <button type="button"
-                  class="px-3 py-1.5 text-xs sm:text-sm rounded-md text-white ${actionClass}"
-                  onclick="${actionOnClick}">
-            ${actionLabel}
-          </button>
+          <span data-hrbp-badge="${caseId}"
+      class="px-2.5 py-1 rounded-full bg-white/80 border text-[11px] sm:text-xs
+             ${isClosed ? 'border-green-300 text-green-700'
+                        : (displayStatus.includes('รอดำเนินการ')
+                              ? 'border-orange-300 text-orange-700'
+                              : 'border-yellow-300 text-yellow-700')}">
+  ${displayStatus}
+</span>
+
+<button type="button"
+        data-caseid="${caseId}"
+        ${(!isClosed && !hrbpStatus && baseStatus.includes('รอตรวจสอบ')) ? 'data-hrbp-action="confirm"' : ''}
+        class="px-3 py-1.5 text-xs sm:text-sm rounded-md text-white ${actionClass}"
+        onclick="${actionOnClick}">
+  ${actionLabel}
+</button>
         </div>
       </div>
 
