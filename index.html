@@ -3827,11 +3827,13 @@ async function typeaheadFormat(q){
  
     
     
+let _fmtOpening = false;
+
 async function toggleFormatDropdown(forceOpen){
   const dropdown = document.getElementById('formatDropdown');
   const input    = document.getElementById('locationFormat');
 
-    const shouldOpen = (typeof forceOpen === 'boolean')
+  const shouldOpen = (typeof forceOpen === 'boolean')
     ? forceOpen
     : dropdown.classList.contains('hidden');
 
@@ -3840,21 +3842,45 @@ async function toggleFormatDropdown(forceOpen){
     return;
   }
 
-  
+  // กันคลิกถี่ ๆ เรียกซ้อนจนรวน
+  if (_fmtOpening) {
+    dropdown.classList.remove('hidden'); // อย่างน้อยให้มันแสดงอยู่
+    return;
+  }
+  _fmtOpening = true;
+
   closeFormatLocationDropdowns_('formatDropdown');
 
-  const items = await ensureFormats();
-  const list = items.slice(0, 100);
-
-  dropdown.innerHTML = '';
-  list.forEach(fmt => {
-    const div = document.createElement('div');
-    div.className = 'px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0';
-    div.textContent = fmt;
-    div.onclick = () => { input.value = fmt; dropdown.classList.add('hidden'); };
-    dropdown.appendChild(div);
-  });
+  // ✅ เปิดทันที + แสดง loading ก่อน await
+  dropdown.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">Loading...</div>';
   dropdown.classList.remove('hidden');
+
+  try {
+    const items = await ensureFormats();
+    const list = (items || []).slice(0, 100);
+
+    dropdown.innerHTML = '';
+    list.forEach(fmt => {
+      const div = document.createElement('div');
+      div.className = 'px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0';
+      div.textContent = fmt;
+
+      div.onclick = (ev) => {
+        if (ev) ev.stopPropagation();
+        input.value = fmt;
+        dropdown.classList.add('hidden');
+      };
+
+      dropdown.appendChild(div);
+    });
+
+    // ถ้าไม่มีรายการ ให้โชว์ข้อความแทน (ไม่ปิดทิ้งแบบงง ๆ)
+    if (!list.length) {
+      dropdown.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">No data</div>';
+    }
+  } finally {
+    _fmtOpening = false;
+  }
 }
 
     async function toggleLocationDropdown(forceOpen){
@@ -3866,20 +3892,21 @@ async function toggleFormatDropdown(forceOpen){
     ? forceOpen
     : dropdown.classList.contains('hidden');
 
-  if (!shouldOpen){
+  // ถ้ากำลังจะ “เปิด” → เปิด UI ทันที (ไม่รอ ensureLocations)
+  if (shouldOpen){
+    closeFormatLocationDropdowns_('locationDropdown');
+    dropdown.classList.remove('hidden');
+    dropdown.innerHTML = `<div class="px-4 py-2 text-sm text-gray-500">Loading...</div>`;
+  } else {
     dropdown.classList.add('hidden');
     return;
   }
-
-      
-      closeFormatLocationDropdowns_('locationDropdown');
 
   const items = await ensureLocations(); // [{format, location}]
   const currentFmt = (fmtInput && fmtInput.value ? fmtInput.value.trim().toLowerCase() : '');
 
   let list = items;
 
-  // ถ้ามี Format ที่เลือกอยู่แล้ว → แสดงเฉพาะ Location ใน Format นั้น
   if (currentFmt){
     list = list.filter(row =>
       String(row.format || '').trim().toLowerCase() === currentFmt
@@ -3889,6 +3916,7 @@ async function toggleFormatDropdown(forceOpen){
   list = list.slice(0, 100);
 
   if (!list.length){
+    dropdown.innerHTML = '';
     dropdown.classList.add('hidden');
     return;
   }
@@ -3904,19 +3932,17 @@ async function toggleFormatDropdown(forceOpen){
     div.textContent = fmt ? `${loc} (${fmt})` : loc;
 
     div.onclick = (ev) => {
-  if (ev) ev.stopPropagation();
+      if (ev) ev.stopPropagation();
 
-  input.value = loc;
-  if (fmtInput && !fmtInput.value.trim()){
-    fmtInput.value = fmt;
-  }
-  dropdown.classList.add('hidden');
-};
+      input.value = loc;
+      if (fmtInput && !fmtInput.value.trim()){
+        fmtInput.value = fmt;
+      }
+      dropdown.classList.add('hidden');
+    };
 
     dropdown.appendChild(div);
   });
-
-  dropdown.classList.remove('hidden');
 }
 
 /** ---------- แนบรูป: พรีวิว + ลบไฟล์ที่เลือก ---------- */
