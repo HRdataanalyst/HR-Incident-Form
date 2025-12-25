@@ -2692,47 +2692,6 @@ async function confirmHRBPCase(caseId) {
   const ok = confirm(`คุณต้องการยืนยันการแจ้งเหตุของเคส ${caseId} ใช่หรือไม่?`);
   if (!ok) return;
 
-  // ===== OPTIMISTIC UI: เปลี่ยนสถานะบนหน้าเว็บทันที =====
-const badge = document.querySelector(
-  `span[data-hrbp-badge="${caseId}"]`
-);
-const btn = document.querySelector(
-  `button[data-hrbp-action="confirm"][data-caseid="${caseId}"]`
-);
-
-// เปลี่ยนสถานะเป็น "รอดำเนินการ" ทันที
-if (badge) {
-  badge.textContent = 'รอดำเนินการ';
-  badge.classList.remove(
-    'border-yellow-300',
-    'text-yellow-700'
-  );
-  badge.classList.add(
-    'border-orange-300',
-    'text-orange-700'
-  );
-}
-
-// เปลี่ยนปุ่มเป็น "ดูรายละเอียด" ทันที + กันกดซ้ำ
-if (btn) {
-  btn.disabled = true;
-  btn.textContent = 'ดูรายละเอียด';
-  btn.classList.remove(
-    'bg-green-600',
-    'hover:bg-green-700'
-  );
-  btn.classList.add(
-    'bg-blue-600',
-    'hover:bg-blue-700'
-  );
-  btn.removeAttribute('data-hrbp-action');
-  btn.setAttribute(
-    'onclick',
-    `viewCase('${caseId}')`
-  );
-}
-
-
   // ✅ ล็อกปุ่ม/ล็อกเคสทันที (ไม่ต้องรอสถานะจาก server)
   hrbpConfirmingSet.add(caseId);
 
