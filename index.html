@@ -3403,12 +3403,14 @@ async function loadHistoryCases(empId){
           </button>
 
           ${!r.isClosed
-            ? `<button onclick="closeCaseByEmployee('${r.id}')"
-                 class="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs sm:text-sm">
-                 ปิดเคส
-               </button>`
-            : ''
-          }
+  ? `<button
+       data-close-btn="${r.id}"
+       onclick="closeCaseByEmployee('${r.id}')"
+       class="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs sm:text-sm">
+       ปิดเคส
+     </button>`
+  : ''
+}
         </div>
       </div>
     `;
@@ -3464,6 +3466,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function viewCaseHistory(id){ viewCase(id); }
     async function closeCaseByEmployee(id){
+
   if (!historyEmp || !historyEmp.empId){
     alert('กรุณาล็อกอินด้วยรหัสพนักงานก่อน');
     return;
@@ -3471,6 +3474,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!confirm(`คุณต้องการปิดเคส ${id} ใช่หรือไม่?`)){
     return;
+  }
+
+  // ✅ 1) กันกดซ้ำ + เปลี่ยนข้อความปุ่มทันที (Optimistic UI - Step 1)
+  const btn = document.querySelector(`button[data-close-btn="${id}"]`);
+  if (btn){
+    btn.disabled = true;
+    btn.classList.add('opacity-60','cursor-not-allowed');
+    btn.dataset.oldText = btn.textContent;
+    btn.textContent = 'กำลังปิดเคส...';
   }
 
   try{
@@ -3481,17 +3493,59 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (!res.ok){
+      // ❌ ถ้าไม่สำเร็จ: คืนค่าปุ่มให้กดได้เหมือนเดิม
+      if (btn){
+        btn.disabled = false;
+        btn.classList.remove('opacity-60','cursor-not-allowed');
+        btn.textContent = btn.dataset.oldText || 'ปิดเคส';
+      }
       alert(res.error || 'ปิดเคสไม่สำเร็จ');
       return;
     }
 
+    // ✅ 2) สำเร็จแล้ว: อัปเดตสถานะในหน้าเว็บ "ทันที" (Optimistic UI - Step 2)
+    const nowISO = new Date().toISOString();
+
+    // 2.1) อัปเดตตัวที่ใช้ render list (สำคัญสุด)
+    const item = Array.isArray(historyCurrentRows)
+      ? historyCurrentRows.find(x => x.id === id)
+      : null;
+
+    if (item){
+      item.isClosed  = true;
+      item.status    = 'เสร็จสิ้น-ปิดเคส';
+      item.closedRaw = nowISO;
+      item.closedAt  = formatDateTime(nowISO);
+    }
+
+    // 2.2) (เผื่อ viewCase ใช้ historyCases) อัปเดต raw ด้วย
+    if (Array.isArray(historyCases)){
+      const raw = historyCases.find(r => String((r.CaseId || '')).trim() === id);
+      if (raw){
+        raw['Status-Close'] = 'เสร็จสิ้น-ปิดเคส';
+        raw['Date-Close']   = nowISO;
+      }
+    }
+
+    // ✅ 3) รีเรนเดอร์ใหม่ โดยยังยึด filter เดิม (เช่น ALL) เพราะ showSearchResults ใช้ historyFilterStatus เดิมอยู่แล้ว
+    showSearchResults(historyCurrentRows);
+
+    // (ถ้าอยากคง alert ก็เก็บไว้ได้)
     alert(`เคส ${id} ได้รับการปิดเรียบร้อยแล้ว`);
 
-    // โหลดรายการเคสใหม่เพื่ออัปเดตสถานะบนหน้าจอ
-    await loadHistoryCases(historyEmp.empId);
+    // ❗️สำคัญ: ไม่ต้อง await loadHistoryCases(...) แล้ว
+    // await loadHistoryCases(historyEmp.empId);
 
   }catch(err){
     console.error(err);
+
+    // ❌ error: คืนค่าปุ่มให้กดได้เหมือนเดิม
+    if (btn){
+      btn.disabled = false;
+      btn.classList.remove('opacity-60','cursor-not-allowed');
+      btn.textContent = btn.dataset.oldText || 'ปิดเคส';
+    }
+
     alert('เกิดข้อผิดพลาดในการปิดเคส');
   }
 }
