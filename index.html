@@ -2686,54 +2686,34 @@ async function confirmHRBPCase(caseId) {
     return;
   }
 
-  // ✅ กันกดซ้ำทันที
-  if (hrbpConfirmingSet.has(caseId)) return;
+  // ✅ กันกดซ้ำทันที (ถ้าคุณมี hrbpConfirmingSet อยู่แล้ว ให้ใช้ตัวเดิม)
+  if (typeof hrbpConfirmingSet !== 'undefined' && hrbpConfirmingSet.has(caseId)) return;
 
   const ok = confirm(`คุณต้องการยืนยันการแจ้งเหตุของเคส ${caseId} ใช่หรือไม่?`);
   if (!ok) return;
 
-  // ✅ ล็อกปุ่ม/ล็อกเคสทันที (ไม่ต้องรอสถานะจาก server)
-  hrbpConfirmingSet.add(caseId);
-
-  // หา element ปุ่มและ badge สถานะของเคสนี้ (เราจะใส่ data-attr ให้ในข้อ 2)
-  const btn = document.querySelector(`button[data-hrbp-action="confirm"][data-caseid="${caseId}"]`);
+  // ===== OPTIMISTIC UI: เปลี่ยนสถานะบนหน้าเว็บทันที =====
   const badge = document.querySelector(`span[data-hrbp-badge="${caseId}"]`);
+  const btn = document.querySelector(`button[data-hrbp-action="confirm"][data-caseid="${caseId}"]`);
 
-  if (btn) {
-    btn.disabled = true;
-    btn.classList.add('opacity-60', 'cursor-not-allowed');
-    btn.textContent = 'กำลังอัปเดต...';
-  }
-
-  // ✅ Optimistic UI: เปลี่ยนสถานะบนหน้าเว็บทันที
-  // - อัปเดตข้อมูลใน hrbpCurrentRows ก่อน เพื่อให้ render รอบถัดไปถูกต้อง
-  if (Array.isArray(hrbpCurrentRows) && hrbpCurrentRows.length) {
-    const idx = hrbpCurrentRows.findIndex(r => String(r.CaseId || r.caseId || '').trim() === caseId);
-    if (idx !== -1) {
-      hrbpCurrentRows[idx].StatusHRBP = 'รอดำเนินการ';
-      // เผื่อ key อื่น ๆ ใน data (กันไม่ตรงชื่อคอลัมน์)
-      hrbpCurrentRows[idx]['Status-HRBP'] = 'รอดำเนินการ';
-      hrbpCurrentRows[idx].DateHRBP = new Date().toISOString();
-      hrbpCurrentRows[idx]['Date-HRBP'] = new Date().toISOString();
-    }
-  }
-
+  // เปลี่ยนสถานะเป็น "รอดำเนินการ" ทันที
   if (badge) {
     badge.textContent = 'รอดำเนินการ';
-    // เปลี่ยนโทนสีให้เป็น orange (ตาม logic เดิมของคุณ)
     badge.classList.remove('border-yellow-300', 'text-yellow-700');
     badge.classList.add('border-orange-300', 'text-orange-700');
   }
 
-  // ✅ เปลี่ยนปุ่มให้เป็น "ดูรายละเอียด" ทันที (กันกดซ้ำ)
+  // เปลี่ยนปุ่มเป็น "ดูรายละเอียด" ทันที + กันกดซ้ำ
   if (btn) {
-    btn.disabled = true; // คง disabled จนกว่าเราจะ re-render จากข้อมูลจริง
+    btn.disabled = true;
     btn.textContent = 'ดูรายละเอียด';
     btn.classList.remove('bg-green-600', 'hover:bg-green-700');
     btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+    btn.removeAttribute('data-hrbp-action');
     btn.setAttribute('onclick', `viewCase('${caseId}')`);
-    btn.removeAttribute('data-hrbp-action'); // กัน selector เดิมไปเจออีก
   }
+
+  if (typeof hrbpConfirmingSet !== 'undefined') hrbpConfirmingSet.add(caseId);
 
   try {
     showLoading('กำลังอัปเดตสถานะเคส...');
@@ -2747,33 +2727,34 @@ async function confirmHRBPCase(caseId) {
     hideLoading();
 
     if (!res.ok) {
-      // ❗ ถ้า server ไม่สำเร็จ → ปลดล็อกให้กดใหม่ + แจ้งเตือน
-      hrbpConfirmingSet.delete(caseId);
-
-      if (btn) {
-        btn.disabled = false;
-        btn.classList.remove('opacity-60', 'cursor-not-allowed');
-        btn.textContent = 'ยืนยันการแจ้งเหตุ';
-      }
-      // รีเฟรชข้อมูลจริงกลับมาเพื่อคืน UI
-      await loadHRBPCases(currentHRBP.id);
-
+      // ❗️ถ้า server fail: ให้ปลดล็อกเพื่อให้ลองใหม่ได้ (และควร revert UI)
+      if (typeof hrbpConfirmingSet !== 'undefined') hrbpConfirmingSet.delete(caseId);
       alert(res.error || 'อัปเดตสถานะไม่สำเร็จ');
       return;
     }
 
-    alert('ยืนยันการแจ้งเหตุเรียบร้อยแล้ว');
+    // ✅ สำคัญ: อัปเดต "ข้อมูลในหน่วยความจำ" (hrbpCurrentRows) ให้เป็น รอดำเนินการ
+    if (Array.isArray(hrbpCurrentRows)) {
+      const i = hrbpCurrentRows.findIndex(r => String(r['CaseId'] || '').trim() === String(caseId).trim());
+      if (i > -1) {
+        hrbpCurrentRows[i]['Status-HRBP'] = 'รอดำเนินการ';
+        // ถ้าหน้าคุณใช้ Status หลักด้วย ก็อัปเดตเผื่อไว้
+        if (typeof hrbpCurrentRows[i]['Status'] !== 'undefined') {
+          hrbpCurrentRows[i]['Status'] = 'รอดำเนินการ';
+        }
+      }
+    }
 
-    // ✅ Sync ข้อมูลจริงจาก server อีกรอบ (กัน mismatch)
-    await loadHRBPCases(currentHRBP.id);
+    // ✅ สำคัญที่สุด: ไม่ต้องโหลดรายการใหม่ทันที
+    // ให้สลับไปแท็บ "รอดำเนินการ" เลย (หน้าไม่เด้งกลับไปรอตรวจสอบ)
+    setHRBPFilter('รอดำเนินการ');
+
+    // (จะเอา alert ออกก็ได้ ถ้าไม่อยากให้เด้ง popup)
+    // alert('ยืนยันการแจ้งเหตุเรียบร้อยแล้ว');
 
   } catch (err) {
     hideLoading();
-    hrbpConfirmingSet.delete(caseId);
-
-    // รีเฟรชข้อมูลจริงกลับมาเพื่อคืน UI
-    try { await loadHRBPCases(currentHRBP.id); } catch {}
-
+    if (typeof hrbpConfirmingSet !== 'undefined') hrbpConfirmingSet.delete(caseId);
     alert('เกิดข้อผิดพลาดในการอัปเดตสถานะเคส\n' + (err.message || err));
   }
 }
