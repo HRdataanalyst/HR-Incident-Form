@@ -3065,15 +3065,16 @@ async function confirmHRBPCase(caseId) {
     card.className = `rounded-2xl border border-gray-200 bg-${tone}-50/60 p-4 sm:p-5 shadow-sm`;
 
     // ปุ่ม action
-    let actionLabel   = 'ดูรายละเอียด';
-    let actionClass   = 'bg-blue-600 hover:bg-blue-700';
-    let actionOnClick = `viewCase('${caseId}')`;
+const showConfirm = (!isClosed && !hrbpStatus && baseStatus.includes('รอตรวจสอบ'));
 
-    if (!isClosed && !hrbpStatus && baseStatus.includes('รอตรวจสอบ')) {
-      actionLabel   = 'ยืนยันการแจ้งเหตุ';
-      actionClass   = 'bg-green-600 hover:bg-green-700';
-      actionOnClick = `confirmHRBPCase('${caseId}')`;
-    }
+// default = ดูรายละเอียด
+let actionLabel   = 'ดูรายละเอียด';
+let actionClass   = 'bg-blue-600 hover:bg-blue-700';
+let actionOnClick = `viewCase('${caseId}')`;
+
+// หมายเหตุ:
+// - ถ้า showConfirm = true เราจะ render 2 ปุ่ม (ยืนยัน + ดูรายละเอียด) ใน HTML ด้านล่าง
+// - ดังนั้นตรงนี้ไม่ต้องสลับ actionLabel/actionOnClick ไปเป็น confirm แล้ว
 
     card.innerHTML = `
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -3111,13 +3112,27 @@ async function confirmHRBPCase(caseId) {
   ${displayStatus}
 </span>
 
-<button type="button"
-        data-caseid="${caseId}"
-        ${(!isClosed && !hrbpStatus && baseStatus.includes('รอตรวจสอบ')) ? 'data-hrbp-action="confirm"' : ''}
-        class="px-3 py-1.5 text-xs sm:text-sm rounded-md text-white ${actionClass}"
-        onclick="${actionOnClick}">
-  ${actionLabel}
-</button>
+${showConfirm ? `
+  <button type="button"
+          data-caseid="${caseId}"
+          data-hrbp-action="confirm"
+          class="px-3 py-1.5 text-xs sm:text-sm rounded-md text-white bg-green-600 hover:bg-green-700"
+          onclick="confirmHRBPCase('${caseId}')">
+    ยืนยันการแจ้งเหตุ
+  </button>
+
+  <button type="button"
+          class="px-3 py-1.5 text-xs sm:text-sm rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          onclick="viewCase('${caseId}')">
+    ดูรายละเอียด
+  </button>
+` : `
+  <button type="button"
+          class="px-3 py-1.5 text-xs sm:text-sm rounded-md text-white ${actionClass}"
+          onclick="${actionOnClick}">
+    ${actionLabel}
+  </button>
+`}
         </div>
       </div>
 
