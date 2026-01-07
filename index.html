@@ -1079,19 +1079,32 @@ input:focus {
 
   <!-- Case Detail Modal (demo) -->
   <div id="caseModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+  
+  <!-- ✅ ชั้นนอก: โค้ง + คลุม scrollbar -->
+  <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+
+    <!-- ✅ ชั้นใน: เลื่อน -->
+    <div class="p-8 pr-6 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-6">
         <h3 class="text-xl font-bold text-gray-800" id="caseTitle">รายละเอียดเคส</h3>
         <button onclick="closeCaseModal()" class="text-gray-500 hover:text-gray-700" aria-label="ปิดหน้าต่าง">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
       </div>
+
       <div id="caseContent" class="space-y-4 mb-8"></div>
+
       <div class="flex gap-3">
-        <button onclick="closeCaseModal()" class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50">ปิด</button>
+        <button onclick="closeCaseModal()" class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50">
+          ปิด
+        </button>
       </div>
     </div>
+
   </div>
+</div>
 
   <script>
      // ===== API CONFIG & HELPERS =====
