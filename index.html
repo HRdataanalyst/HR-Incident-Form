@@ -1598,6 +1598,32 @@ function onPhotoDoubleClick_(safeLink) {
   }
   window.open(safeLink, '_blank', 'noopener');
 }
+    
+    function handleAttachmentClick_(ev, el) {
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const link = el?.dataset?.link || '';
+  const caption = el?.dataset?.caption || '';
+  const img = el.querySelector('img');
+  const previewSrc = img?.src || '';
+
+  // 1 click -> เปิดรูปใหญ่ (ผ่านตัวหน่วงใน onPhotoSingleClick_)
+  onPhotoSingleClick_(link, previewSrc, caption);
+  return false;
+}
+
+function handleAttachmentDblClick_(ev, el) {
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const link = el?.dataset?.link || '';
+
+  // 2 click -> เปิด Google Drive
+  onPhotoDoubleClick_(link);
+  return false;
+}
+
 
 function openPhotoViewer_(src, caption, link) {
   const modal = document.getElementById('photoViewer');
