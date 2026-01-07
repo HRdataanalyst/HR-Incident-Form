@@ -1447,14 +1447,27 @@ function buildPhotoGalleryHtml_(photosField){
 
   const items = links.map((link, idx) => {
     const safeLink = escapeHTML_(link);
-    const imgSrc   = escapeHTML_(toDriveViewUrl_(link));
+
+const id = extractDriveFileId_(link);
+const candidates = id ? buildImgSrcCandidatesById_(id) : [String(link || '').trim()];
+
+// ใช้ตัวแรกเป็น src เริ่มต้น
+const imgSrc = escapeHTML_(candidates[0]);
+
+// เก็บ candidates ไว้ใน data-srcs เพื่อให้ onerror ลองตัวถัดไป
+const dataSrcs = escapeHTML_(JSON.stringify(candidates));
     return `
       <a href="${safeLink}" target="_blank" rel="noopener"
          class="group block rounded-xl overflow-hidden border border-gray-200 bg-white hover:shadow-md transition">
         <div class="aspect-square bg-gray-50 overflow-hidden">
-          <img src="${imgSrc}" alt="Attachment ${idx+1}"
-               class="w-full h-full object-cover group-hover:scale-[1.02] transition"
-               onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&quot;w-full h-full flex items-center justify-center text-xs text-gray-500 p-3&quot;>เปิดรูปไม่ได้ (คลิกเพื่อเปิดลิงก์)</div>';">
+          <img
+  src="${imgSrc}"
+  data-srcs="${dataSrcs}"
+  data-src-idx="0"
+  alt="Attachment ${idx+1}"
+  class="w-full h-full object-cover group-hover:scale-[1.02] transition"
+  onerror="tryNextImgSrc_(this);"
+/>
         </div>
         <div class="px-3 py-2 text-[11px] text-gray-500 truncate">
           Attachment ${idx+1}
@@ -1475,6 +1488,48 @@ function buildPhotoGalleryHtml_(photosField){
     </div>
   `;
 }
+   function buildImgSrcCandidatesById_(id){
+  // ลองหลายโดเมน/หลาย endpoint เพื่อให้ <img> ได้รูปจริง
+  return [
+    // 1) thumbnail (บางบัญชี/ไฟล์จะผ่าน)
+    `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w800`,
+
+    // 2) uc export=view
+    `https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}`,
+
+    // 3) uc export=download (หลายเคสจะได้ไฟล์รูปตรง ๆ)
+    `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`,
+
+    // 4) googleusercontent (มักใช้เสิร์ฟรูปจริง)
+    `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w1200`
+  ];
+}
+
+function tryNextImgSrc_(imgEl){
+  try {
+    const srcs = JSON.parse(imgEl.getAttribute('data-srcs') || '[]');
+    let idx = Number(imgEl.getAttribute('data-src-idx') || 0);
+
+    idx += 1;
+    if (idx >= srcs.length) {
+      // หมดทางเลือกแล้ว -> แสดงข้อความ fallback (เหมือนเดิม)
+      imgEl.style.display = 'none';
+      imgEl.parentElement.innerHTML =
+        '<div class="w-full h-full flex items-center justify-center text-xs text-gray-500 p-3">เปิดรูปไม่ได้ (คลิกเพื่อเปิดลิงก์)</div>';
+      return;
+    }
+
+    imgEl.setAttribute('data-src-idx', String(idx));
+    imgEl.src = srcs[idx];
+  } catch (e) {
+    // ถ้า parse ไม่ได้ ก็ fallback
+    imgEl.style.display = 'none';
+    imgEl.parentElement.innerHTML =
+      '<div class="w-full h-full flex items-center justify-center text-xs text-gray-500 p-3">เปิดรูปไม่ได้ (คลิกเพื่อเปิดลิงก์)</div>';
+  }
+}
+ 
+   
 
     
 // ===== Loading Popup (ใช้ร่วมทุกหน้า) =====
