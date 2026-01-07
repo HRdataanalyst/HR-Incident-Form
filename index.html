@@ -1399,138 +1399,13 @@ async function loadCategories(opts = {}){
       errorBox.classList.remove('hidden');
     }
   }
-} 
+}
 
     function escapeHTML_(s){
       return String(s || '')
         .replace(/&/g,'&amp;').replace(/</g,'&lt;')
         .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
-    
-    // ===== Photos (Drive URLs) Helpers =====
-function extractDriveFileId_(url){
-  const u = String(url || '').trim();
-  if (!u) return '';
-
-  // patterns:
-  // - https://drive.google.com/file/d/<ID>/view?...
-  // - https://drive.google.com/open?id=<ID>
-  // - https://drive.google.com/uc?id=<ID>&...
-  let m = u.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (m && m[1]) return m[1];
-
-  m = u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (m && m[1]) return m[1];
-
-  return '';
-}
-
-function toDriveViewUrl_(url){
-  const id = extractDriveFileId_(url);
-  if (!id) return String(url || '').trim();
-
-  // ✅ โหลดรูปผ่าน Apps Script (script.google.com) ไม่ต้องเข้า drive.google.com
-  // ใส่ &t= เพื่อกัน cache ตอนทดสอบ
-  return `${API_URL}?action=photo&id=${encodeURIComponent(id)}&t=${Date.now()}`;
-}
-
-function buildPhotoGalleryHtml_(photosField){
-  const raw = String(photosField || '').trim();
-  if (!raw) return '';
-
-  const links = raw
-    .split(/\r?\n/)
-    .map(s => s.trim())
-    .filter(Boolean);
-
-  if (!links.length) return '';
-
-  const items = links.map((link, idx) => {
-    const safeLink = escapeHTML_(link);
-
-const id = extractDriveFileId_(link);
-const candidates = id ? buildImgSrcCandidatesById_(id) : [String(link || '').trim()];
-
-// ใช้ตัวแรกเป็น src เริ่มต้น
-const imgSrc = escapeHTML_(candidates[0]);
-
-// เก็บ candidates ไว้ใน data-srcs เพื่อให้ onerror ลองตัวถัดไป
-const dataSrcs = escapeHTML_(JSON.stringify(candidates));
-    return `
-      <a href="${safeLink}" target="_blank" rel="noopener"
-         class="group block rounded-xl overflow-hidden border border-gray-200 bg-white hover:shadow-md transition">
-        <div class="aspect-square bg-gray-50 overflow-hidden">
-          <img
-  src="${imgSrc}"
-  data-srcs="${dataSrcs}"
-  data-src-idx="0"
-  alt="Attachment ${idx+1}"
-  class="w-full h-full object-cover group-hover:scale-[1.02] transition"
-  onerror="tryNextImgSrc_(this);"
-/>
-        </div>
-        <div class="px-3 py-2 text-[11px] text-gray-500 truncate">
-          Attachment ${idx+1}
-        </div>
-      </a>
-    `;
-  }).join('');
-
-  return `
-    <div class="mt-4 p-4 bg-white border border-gray-100 rounded-lg">
-      <div class="flex items-center justify-between">
-        <strong>ไฟล์แนบ:</strong>
-        <div class="text-xs text-gray-500">${links.length} ไฟล์</div>
-      </div>
-      <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        ${items}
-      </div>
-    </div>
-  `;
-}
-   function buildImgSrcCandidatesById_(id){
-  // ลองหลายโดเมน/หลาย endpoint เพื่อให้ <img> ได้รูปจริง
-  return [
-    // 1) thumbnail (บางบัญชี/ไฟล์จะผ่าน)
-    `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w800`,
-
-    // 2) uc export=view
-    `https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}`,
-
-    // 3) uc export=download (หลายเคสจะได้ไฟล์รูปตรง ๆ)
-    `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`,
-
-    // 4) googleusercontent (มักใช้เสิร์ฟรูปจริง)
-    `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w1200`
-  ];
-}
-
-function tryNextImgSrc_(imgEl){
-  try {
-    const srcs = JSON.parse(imgEl.getAttribute('data-srcs') || '[]');
-    let idx = Number(imgEl.getAttribute('data-src-idx') || 0);
-
-    idx += 1;
-    if (idx >= srcs.length) {
-      // หมดทางเลือกแล้ว -> แสดงข้อความ fallback (เหมือนเดิม)
-      imgEl.style.display = 'none';
-      imgEl.parentElement.innerHTML =
-        '<div class="w-full h-full flex items-center justify-center text-xs text-gray-500 p-3">เปิดรูปไม่ได้ (คลิกเพื่อเปิดลิงก์)</div>';
-      return;
-    }
-
-    imgEl.setAttribute('data-src-idx', String(idx));
-    imgEl.src = srcs[idx];
-  } catch (e) {
-    // ถ้า parse ไม่ได้ ก็ fallback
-    imgEl.style.display = 'none';
-    imgEl.parentElement.innerHTML =
-      '<div class="w-full h-full flex items-center justify-center text-xs text-gray-500 p-3">เปิดรูปไม่ได้ (คลิกเพื่อเปิดลิงก์)</div>';
-  }
-}
- 
-   
-
     
 // ===== Loading Popup (ใช้ร่วมทุกหน้า) =====
 function showLoading(text) {
@@ -3796,52 +3671,36 @@ const details =
   if (titleEl) titleEl.textContent = `รายละเอียดเคส: ${caseIdText}`;
 
   if (content){
-
-  // ✅ ดึง Photos จากชีต (คอลัมน์ Photos)
-  const photosField = String(row['Photos'] || row['photos'] || '').trim();
-  const photosHtml  = buildPhotoGalleryHtml_(photosField);
-
-  content.innerHTML = `
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div class="p-4 bg-gray-50 rounded-lg">
-        <div class="text-gray-500 text-sm">ประเภท</div>
-        <div class="font-semibold text-gray-800 mt-1">${typeText || '-'}</div>
+    content.innerHTML = `
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-gray-500 text-sm">ประเภท</div>
+          <div class="font-semibold text-gray-800 mt-1">${typeText || '-'}</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-gray-500 text-sm">สถานะ</div>
+          <div class="font-semibold text-gray-800 mt-1">${status}</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-gray-500 text-sm">สถานที่</div>
+          <div class="font-semibold text-gray-800 mt-1">${location}</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-gray-500 text-sm">วันที่และเวลา</div>
+          <div class="font-semibold text-gray-800 mt-1">${dateText || '-'}</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-lg sm:col-span-2">
+          <div class="text-gray-500 text-sm">ผู้แจ้ง</div>
+          <div class="font-semibold text-gray-800 mt-1">${reporter}</div>
+        </div>
       </div>
 
-      <div class="p-4 bg-gray-50 rounded-lg">
-        <div class="text-gray-500 text-sm">สถานะ</div>
-        <div class="font-semibold text-gray-800 mt-1">${status}</div>
-      </div>
-
-      <div class="p-4 bg-gray-50 rounded-lg">
-        <div class="text-gray-500 text-sm">สถานที่</div>
-        <div class="font-semibold text-gray-800 mt-1">${location}</div>
-      </div>
-
-      <div class="p-4 bg-gray-50 rounded-lg">
-        <div class="text-gray-500 text-sm">วันที่และเวลา</div>
-        <div class="font-semibold text-gray-800 mt-1">${dateText || '-'}</div>
-      </div>
-
-      <div class="p-4 bg-gray-50 rounded-lg sm:col-span-2">
-        <div class="text-gray-500 text-sm">ผู้แจ้ง</div>
-        <div class="font-semibold text-gray-800 mt-1">${reporter}</div>
-      </div>
-    </div>
-
-    <div class="mt-4 p-4 bg-white border border-gray-100 rounded-lg">
-      <strong>รายละเอียด:</strong>
-      <p class="mt-2 p-4 bg-gray-50 rounded-lg whitespace-pre-line">${details || '-'}</p>
-    </div>
-
-    ${photosHtml || `
       <div class="mt-4 p-4 bg-white border border-gray-100 rounded-lg">
-        <strong>ไฟล์แนบ:</strong>
-        <div class="text-sm text-gray-500 mt-2">ไม่มีไฟล์แนบ</div>
+        <strong>รายละเอียด:</strong>
+        <p class="mt-2 p-4 bg-gray-50 rounded-lg whitespace-pre-line">${details || '-'}</p>
       </div>
-    `}
-  `;
-}
+    `;
+  }
 }
     
     window.viewCase = viewCase;
