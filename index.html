@@ -1489,19 +1489,19 @@ const dataSrcs = escapeHTML_(JSON.stringify(candidates));
   `;
 }
    function buildImgSrcCandidatesById_(id){
-  // ลองหลายโดเมน/หลาย endpoint เพื่อให้ <img> ได้รูปจริง
+  const enc = encodeURIComponent(id);
+
+  // ✅ เรียงตัวที่ “มักเร็ว/ตรง” ไว้ก่อน เพื่อลดเวลารอ timeout
+  // ✅ ลดจำนวน candidates เพื่อให้ fallback ไม่ลากยาว
   return [
-    // 1) thumbnail (บางบัญชี/ไฟล์จะผ่าน)
-    `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w800`,
+    // 1) googleusercontent (มักเสิร์ฟรูปตรง + เร็ว)
+    `https://lh3.googleusercontent.com/d/${enc}=w1200`,
 
-    // 2) uc export=view
-    `https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}`,
+    // 2) thumbnail (ทำเป็นรูปพรีวิวในการ์ดจะไวมาก)
+    `https://drive.google.com/thumbnail?id=${enc}&sz=w400`,
 
-    // 3) uc export=download (หลายเคสจะได้ไฟล์รูปตรง ๆ)
-    `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`,
-
-    // 4) googleusercontent (มักใช้เสิร์ฟรูปจริง)
-    `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w1200`
+    // 3) เผื่อบางเคสที่ 2 อันบนไม่ได้จริง ๆ
+    `https://drive.google.com/uc?export=download&id=${enc}`,
   ];
 }
 
