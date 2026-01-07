@@ -1105,35 +1105,6 @@ input:focus {
 
   </div>
 </div>
-  
-  <!-- Photo Viewer Modal -->
-<div id="photoViewer"
-     class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4"
-     onclick="closePhotoViewer_(event)">
-  <div class="relative w-full max-w-6xl" onclick="event.stopPropagation()">
-    <button type="button"
-            class="absolute -top-10 right-0 text-white/80 hover:text-white"
-            onclick="closePhotoViewer_()"
-            aria-label="ปิดรูป">
-      ✕
-    </button>
-
-    <img id="photoViewerImg"
-         src=""
-         alt=""
-         class="w-full max-h-[85vh] object-contain rounded-xl bg-black/20" />
-
-    <div class="mt-3 flex items-center justify-between text-white/80 text-xs">
-      <div id="photoViewerCaption" class="truncate"></div>
-      <button type="button"
-              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20"
-              onclick="openPhotoViewerLink_()">
-        เปิดใน Google Drive
-      </button>
-    </div>
-  </div>
-</div>
-
 
   <script>
      // ===== API CONFIG & HELPERS =====
@@ -1499,28 +1470,23 @@ const imgSrc = escapeHTML_(candidates[0]);
 // เก็บ candidates ไว้ใน data-srcs เพื่อให้ onerror ลองตัวถัดไป
 const dataSrcs = escapeHTML_(JSON.stringify(candidates));
     return `
-  <a href="${safeLink}" target="_blank" rel="noopener"
-     class="group block rounded-xl overflow-hidden border border-gray-200 bg-white hover:shadow-md transition"
-     onclick="event.preventDefault(); event.stopPropagation(); onPhotoSingleClick_('${safeLink}', '${imgSrc}', 'Attachment ${idx+1}'); return false;"
-     ondblclick="event.preventDefault(); event.stopPropagation(); onPhotoDoubleClick_('${safeLink}'); return false;">
-     
-    <div class="aspect-square bg-gray-50 overflow-hidden">
-      <img
-        src="${imgSrc}"
-        data-srcs="${dataSrcs}"
-        data-src-idx="0"
-        alt="Attachment ${idx+1}"
-        class="w-full h-full object-cover group-hover:scale-[1.02] transition"
-        onerror="tryNextImgSrc_(this);"
-        draggable="false"
-      />
-    </div>
-
-    <div class="px-3 py-2 text-[11px] text-gray-500 truncate">
-      Attachment ${idx+1}
-    </div>
-  </a>
-`;
+      <a href="${safeLink}" target="_blank" rel="noopener"
+         class="group block rounded-xl overflow-hidden border border-gray-200 bg-white hover:shadow-md transition">
+        <div class="aspect-square bg-gray-50 overflow-hidden">
+          <img
+  src="${imgSrc}"
+  data-srcs="${dataSrcs}"
+  data-src-idx="0"
+  alt="Attachment ${idx+1}"
+  class="w-full h-full object-cover group-hover:scale-[1.02] transition"
+  onerror="tryNextImgSrc_(this);"
+/>
+        </div>
+        <div class="px-3 py-2 text-[11px] text-gray-500 truncate">
+          Attachment ${idx+1}
+        </div>
+      </a>
+    `;
   }).join('');
 
   return `
@@ -1576,93 +1542,7 @@ function tryNextImgSrc_(imgEl){
   }
 }
  
-   // ===== Photo Viewer (single click = open modal, double click = open drive) =====
-let _photoClickTimer = null;
-let _photoViewerLink = '';
-
-// 1 click: หน่วงนิดนึง เผื่อ user กำลังจะ double click
-function onPhotoSingleClick_(safeLink, previewSrc, safeCaption) {
-  if (_photoClickTimer) clearTimeout(_photoClickTimer);
-
-  _photoClickTimer = setTimeout(() => {
-    _photoClickTimer = null;
-    openPhotoViewer_(previewSrc, safeCaption, safeLink);
-  }, 240); // ปรับ 180-280ms ได้ตามชอบ
-}
-
-// 2 clicks: ยกเลิก single click แล้วเปิดลิงก์ไป Drive
-function onPhotoDoubleClick_(safeLink) {
-  if (_photoClickTimer) {
-    clearTimeout(_photoClickTimer);
-    _photoClickTimer = null;
-  }
-  window.open(safeLink, '_blank', 'noopener');
-}
-    
-    function handleAttachmentClick_(ev, el) {
-  ev.preventDefault();
-  ev.stopPropagation();
-
-  const link = el?.dataset?.link || '';
-  const caption = el?.dataset?.caption || '';
-  const img = el.querySelector('img');
-  const previewSrc = img?.src || '';
-
-  // 1 click -> เปิดรูปใหญ่ (ผ่านตัวหน่วงใน onPhotoSingleClick_)
-  onPhotoSingleClick_(link, previewSrc, caption);
-  return false;
-}
-
-function handleAttachmentDblClick_(ev, el) {
-  ev.preventDefault();
-  ev.stopPropagation();
-
-  const link = el?.dataset?.link || '';
-
-  // 2 click -> เปิด Google Drive
-  onPhotoDoubleClick_(link);
-  return false;
-}
-
-
-function openPhotoViewer_(src, caption, link) {
-  const modal = document.getElementById('photoViewer');
-  const img   = document.getElementById('photoViewerImg');
-  const capEl = document.getElementById('photoViewerCaption');
-
-  if (!modal || !img) return;
-
-  _photoViewerLink = link || '';
-
-  img.src = src || '';
-  img.alt = caption || 'Attachment';
-  if (capEl) capEl.textContent = caption || '';
-
-  modal.classList.remove('hidden');
-
-  // ปิดด้วย ESC
-  document.addEventListener('keydown', _photoViewerEscClose_, { once: true });
-}
-
-function _photoViewerEscClose_(e) {
-  if (e.key === 'Escape') closePhotoViewer_();
-}
-
-function closePhotoViewer_(ev) {
-  // ถ้ามาจาก onclick ที่พื้นหลัง จะมี event; ถ้ากดปุ่มปิด จะไม่มี
-  const modal = document.getElementById('photoViewer');
-  const img   = document.getElementById('photoViewerImg');
-  if (!modal) return;
-
-  modal.classList.add('hidden');
-  if (img) img.src = '';
-  _photoViewerLink = '';
-}
-
-function openPhotoViewerLink_() {
-  if (_photoViewerLink) window.open(_photoViewerLink, '_blank', 'noopener');
-}
-
+   
 
     
 // ===== Loading Popup (ใช้ร่วมทุกหน้า) =====
